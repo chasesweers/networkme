@@ -846,7 +846,7 @@
 <script>
   /* ── INDEXED DB ───────────────────────────────────────────── */
   const DB_NAME = 'networkme_db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORE_NAME = 'networkdata';
   let db = null;
 
@@ -858,9 +858,13 @@
         if (!d.objectStoreNames.contains(STORE_NAME)) {
           d.createObjectStore(STORE_NAME, { keyPath: 'key' });
         }
+        ['profile', 'connections'].forEach(s => {
+          if (d.objectStoreNames.contains(s)) d.deleteObjectStore(s);
+        });
       };
       req.onsuccess = e => { db = e.target.result; resolve(db); };
       req.onerror = () => reject(req.error);
+      req.onblocked = () => console.warn('IndexedDB upgrade blocked — close other tabs of this page.');
     });
   }
 
@@ -1214,10 +1218,16 @@
 
     // Load which connections have notes (batch key check)
     let noteKeys = new Set();
-    try {
-      const allKeys = await db.transaction(STORE_NAME,'readonly').objectStore(STORE_NAME).getAllKeys();
-      allKeys.onsuccess = e => { noteKeys = new Set(e.target.result.filter(k=>k.startsWith('note:'))); };
-    } catch {}
+    if (db) {
+      try {
+        const keys = await new Promise((resolve, reject) => {
+          const req = db.transaction(STORE_NAME,'readonly').objectStore(STORE_NAME).getAllKeys();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+        noteKeys = new Set(keys.filter(k => typeof k === 'string' && k.startsWith('note:')));
+      } catch {}
+    }
 
     list.forEach(c=>{
       const col=getAvatarColor(c.name);
