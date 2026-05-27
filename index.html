@@ -768,7 +768,7 @@
     <div style="max-width:780px;margin:0 auto;">
 
       <button class="profile-back" onclick="closeProfile()">
-        <i class="ti ti-arrow-left"></i> Back to Search
+        <i class="ti ti-arrow-left"></i> <span id="profile-back-label">Back to Search</span>
       </button>
 
       <!-- Header card -->
@@ -1361,7 +1361,7 @@
         const mx=(e.clientX-rect.left-graphOffsetX)/graphScale;
         const my=(e.clientY-rect.top-graphOffsetY)/graphScale;
         const clicked=nodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+5);
-        if(clicked&&clicked.type==='connection') showPanel(clicked.data);
+        if(clicked&&clicked.type==='connection') openProfile(clicked.data);
       }
       isDragging=false;
     };
@@ -1492,8 +1492,17 @@
   }
 
   /* ── PROFILE PAGE ─────────────────────────────────────────── */
+  let profileOrigin = 'search';
   async function openProfile(c) {
     currentProfileConn = c;
+    const activeView = document.querySelector('.view.active');
+    if (activeView && activeView.id === 'view-graph') {
+      profileOrigin = 'graph';
+      document.getElementById('profile-back-label').textContent = 'Back to Visualize';
+    } else {
+      profileOrigin = 'search';
+      document.getElementById('profile-back-label').textContent = 'Back to Search';
+    }
     const col = getAvatarColor(c.name);
 
     // Avatar
@@ -1551,7 +1560,7 @@
   function closeProfile() {
     clearTimeout(noteSaveTimer);
     currentProfileConn = null;
-    switchTab('search');
+    switchTab(profileOrigin || 'search');
   }
 
   function formatDate(d) {
