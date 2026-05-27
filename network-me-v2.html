@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network.me — LinkedIn Connection Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #ffffff; --bg-secondary: #f7f7f5; --bg-tertiary: #f0efeb;
+      --text: #1a1a18; --text-secondary: #5f5e5a; --text-tertiary: #888780;
+      --border: rgba(0,0,0,0.12); --border-secondary: rgba(0,0,0,0.18);
+      --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px;
+      --blue: #0A66C2; --blue-light: #EBF3FB; --blue-text: #0A66C2;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a; --bg-secondary: #252523; --bg-tertiary: #2c2c2a;
+        --text: #f0efeb; --text-secondary: #b4b2a9; --text-tertiary: #888780;
+        --border: rgba(255,255,255,0.1); --border-secondary: rgba(255,255,255,0.18);
+        --blue-light: #0c2a45; --blue-text: #5ba8f5;
+      }
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg-tertiary); color: var(--text); min-height: 100vh; }
+
+    /* NAV */
+    .nav { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-family: 'DM Serif Display', serif; font-size: 22px; letter-spacing: -0.3px; color: var(--text); }
+    .nav-logo span { color: var(--blue); }
+    .nav-tagline { font-size: 12px; color: var(--text-tertiary); margin-left: 10px; font-weight: 300; }
+    .nav-left { display: flex; align-items: baseline; }
+    .nav-tabs { display: flex; gap: 4px; }
+    .nav-tab { padding: 7px 16px; border-radius: var(--radius-md); border: 0.5px solid transparent; font-size: 13px; cursor: pointer; background: transparent; color: var(--text-secondary); font-family: 'DM Sans', sans-serif; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+    .nav-tab:hover { background: var(--bg-secondary); color: var(--text); }
+    .nav-tab.active { background: var(--bg-secondary); border-color: var(--border-secondary); color: var(--text); font-weight: 500; }
+    .nav-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 100px; background: var(--blue); color: #fff; font-size: 10px; font-weight: 600; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* MODALS */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+    .modal-overlay.visible { display: flex; }
+    .modal { background: var(--bg); border-radius: var(--radius-xl); border: 0.5px solid var(--border); padding: 36px 40px; max-width: 460px; width: 90%; animation: slideUp 0.22s ease; }
+    .modal-logo { font-family: 'DM Serif Display', serif; font-size: 26px; margin-bottom: 6px; }
+    .modal-logo span { color: var(--blue); }
+    .modal h3 { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+    .modal p { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.6; }
+    .modal ol { padding-left: 18px; }
+    .modal ol li { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.6; }
+    .modal ol li strong { color: var(--text); }
+    .modal-close { margin-top: 20px; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* FORM */
+    .field-label { font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block; color: var(--text); }
+    .field-input { width: 100%; padding: 10px 14px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); font-size: 14px; font-family: 'DM Sans', sans-serif; background: var(--bg-secondary); color: var(--text); transition: border-color 0.15s; margin-bottom: 20px; }
+    .field-input:focus { outline: none; border-color: var(--blue); background: var(--bg); }
+
+    /* BUTTONS */
+    .btn { padding: 10px 22px; border-radius: var(--radius-md); font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: all 0.15s; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; }
+    .btn-primary { background: var(--blue); color: #fff; border: none; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 0.5px solid var(--border-secondary); }
+    .btn-secondary:hover { background: var(--bg-secondary); }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-danger { background: transparent; color: #dc2626; border: 0.5px solid rgba(220,38,38,0.3); }
+    .btn-danger:hover { background: rgba(220,38,38,0.06); }
+
+    /* IMPORT VIEW */
+    .upload-hero { text-align: center; padding: 56px 24px 40px; }
+    .upload-hero h1 { font-family: 'DM Serif Display', serif; font-size: 36px; font-weight: 400; margin-bottom: 10px; letter-spacing: -0.5px; }
+    .upload-hero p { font-size: 15px; color: var(--text-secondary); max-width: 420px; margin: 0 auto 36px; line-height: 1.7; }
+    .upload-zone { border: 1.5px dashed var(--border-secondary); border-radius: var(--radius-xl); padding: 48px 32px; max-width: 520px; margin: 0 auto 12px; cursor: pointer; transition: all 0.2s; background: var(--bg); }
+    .upload-zone:hover { border-color: var(--blue); }
+    .upload-zone.drag { border-color: var(--blue); background: var(--blue-light); }
+    .upload-icon { font-size: 40px; color: var(--text-tertiary); margin-bottom: 12px; }
+    .upload-zone h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+    .upload-zone p { font-size: 13px; color: var(--text-secondary); }
+    .upload-hint { font-size: 12px; color: var(--text-tertiary); margin-bottom: 24px; line-height: 1.6; max-width: 440px; margin-left: auto; margin-right: auto; }
+    .btn-group { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .features { display: flex; justify-content: center; gap: 32px; padding: 24px 0 0; max-width: 600px; margin: 0 auto; }
+    .feature { text-align: center; }
+    .feature i { font-size: 22px; color: var(--blue); margin-bottom: 6px; display: block; }
+    .feature h4 { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    .feature p { font-size: 12px; color: var(--text-secondary); }
+
+    /* LOADED BANNER */
+    .loaded-banner { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-xl); padding: 24px 28px; margin-bottom: 20px; display: none; }
+    .loaded-banner.visible { display: block; }
+    .loaded-top { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .loaded-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; flex-shrink: 0; }
+    .loaded-name { font-size: 18px; font-weight: 500; }
+    .loaded-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    .loaded-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* STATS */
+    .stats-bar { display: none; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 680px; margin: 0 auto 12px; padding: 0 24px; }
+    .stat-card { background: var(--bg); border-radius: var(--radius-md); border: 0.5px solid var(--border); padding: 14px 16px; }
+    .stat-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+    .stat-val { font-size: 24px; font-weight: 500; line-height: 1; }
+    .stat-sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+
+    /* ACCOUNT VIEW */
+    .account-wrap { display: flex; flex-direction: column; gap: 16px; }
+    .account-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-xl); padding: 28px 32px; }
+    .account-hero { display: flex; align-items: center; gap: 20px; margin-bottom: 28px; }
+    .account-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 500; flex-shrink: 0; }
+    .account-name-text { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
+    .account-sub { font-size: 13px; color: var(--text-secondary); }
+    .section-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-tertiary); margin-bottom: 12px; }
+    .account-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 28px; }
+    .account-stat { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 14px 16px; }
+    .account-stat .val { font-size: 22px; font-weight: 500; }
+    .account-stat .lbl { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+    .account-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 0.5px solid var(--border); }
+    .account-row:last-of-type { border-bottom: none; }
+    .account-row-label { font-size: 13px; color: var(--text-secondary); }
+    .account-row-value { font-size: 13px; font-weight: 500; }
+    .edit-row { display: flex; gap: 8px; margin-top: 10px; }
+    .edit-row input { flex: 1; margin-bottom: 0 !important; }
+
+    /* SEARCH */
+    .search-wrap { background: var(--bg); border-radius: var(--radius-xl); border: 0.5px solid var(--border); overflow: hidden; }
+    .search-top { padding: 20px 24px 16px; border-bottom: 0.5px solid var(--border); }
+    .search-top h2 { font-size: 15px; font-weight: 500; margin-bottom: 14px; }
+    .search-row { display: flex; gap: 8px; }
+    .search-input { flex: 1; padding: 10px 14px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); font-size: 14px; font-family: 'DM Sans', sans-serif; background: var(--bg-secondary); color: var(--text); transition: border-color 0.15s; }
+    .search-input:focus { outline: none; border-color: var(--blue); background: var(--bg); }
+    .filter-row { display: flex; gap: 7px; flex-wrap: wrap; padding: 14px 24px; border-bottom: 0.5px solid var(--border); background: var(--bg-secondary); }
+    .filter-chip { padding: 5px 13px; border-radius: 100px; border: 0.5px solid var(--border); font-size: 12px; cursor: pointer; background: var(--bg); color: var(--text-secondary); font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .filter-chip:hover { border-color: var(--border-secondary); color: var(--text); }
+    .filter-chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .insight-banner { background: var(--blue-light); border-left: 3px solid var(--blue); padding: 10px 16px; font-size: 13px; color: var(--blue-text); display: none; }
+    .insight-banner.visible { display: block; }
+    .results-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; min-height: 200px; }
+    .conn-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; align-items: center; gap: 14px; transition: border-color 0.15s; }
+    .conn-card:hover { border-color: var(--border-secondary); }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; flex-shrink: 0; }
+    .conn-info { flex: 1; min-width: 0; }
+    .conn-name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+    .conn-title { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conn-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+    .conn-tag { font-size: 11px; padding: 2px 9px; border-radius: 100px; background: var(--bg-secondary); color: var(--text-secondary); border: 0.5px solid var(--border); }
+    .match-score { flex-shrink: 0; text-align: center; }
+    .match-pct { font-size: 16px; font-weight: 600; color: var(--blue); display: block; }
+    .match-lbl { font-size: 10px; color: var(--text-tertiary); }
+    .conn-actions { flex-shrink: 0; }
+    .empty-state { text-align: center; padding: 60px 24px; color: var(--text-secondary); }
+    .empty-state i { font-size: 36px; margin-bottom: 12px; display: block; color: var(--text-tertiary); }
+    .empty-state h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+    .empty-state p { font-size: 13px; }
+    .no-results { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 14px; }
+    .no-results i { font-size: 28px; display: block; margin-bottom: 10px; color: var(--text-tertiary); }
+
+    /* GRAPH */
+    .graph-wrap { background: var(--bg); border-radius: var(--radius-xl); border: 0.5px solid var(--border); overflow: hidden; }
+    .graph-header { padding: 16px 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .graph-header h2 { font-size: 15px; font-weight: 500; }
+    .graph-header-actions { display: flex; gap: 8px; }
+    #graph-canvas { width: 100%; height: 520px; display: block; background: var(--bg-secondary); cursor: grab; }
+    #graph-canvas:active { cursor: grabbing; }
+    .graph-footer { padding: 10px 20px; border-top: 0.5px solid var(--border); display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .graph-hint { font-size: 12px; color: var(--text-tertiary); margin-left: auto; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .node-panel { border-top: 0.5px solid var(--border); padding: 20px; display: none; animation: slideUp 0.2s ease; }
+    .node-panel.visible { display: block; }
+    .panel-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .panel-name { font-size: 16px; font-weight: 500; }
+    .panel-title { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    .panel-meta { display: flex; gap: 20px; margin-bottom: 12px; flex-wrap: wrap; }
+    .panel-meta-item { font-size: 13px; color: var(--text-secondary); }
+    .panel-meta-item strong { color: var(--text); font-weight: 500; }
+    .panel-bio { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 14px; }
+    .panel-actions { display: flex; gap: 8px; }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: var(--radius-md); font-size: 13px; z-index: 400; transition: transform 0.25s ease; pointer-events: none; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 600px) {
+      .nav { padding: 0 16px; } .nav-tagline { display: none; }
+      .main { padding: 16px 12px; } .stats-bar { grid-template-columns: repeat(2,1fr); }
+      .account-stats { grid-template-columns: repeat(2,1fr); }
+      .features { gap: 20px; } .upload-hero h1 { font-size: 26px; }
+      .modal { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-left">
+    <span class="nav-logo">Network<span>.</span>me</span>
+    <span class="nav-tagline">LinkedIn network explorer</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-import" onclick="switchTab('import')"><i class="ti ti-upload"></i> Import</button>
+    <button class="nav-tab" id="tab-search" onclick="switchTab('search')"><i class="ti ti-search"></i> Search <span class="nav-badge" id="badge-count" style="display:none"></span></button>
+    <button class="nav-tab" id="tab-graph" onclick="switchTab('graph')"><i class="ti ti-share"></i> Visualize</button>
+    <button class="nav-tab" id="tab-account" onclick="switchTab('account')" style="display:none"><i class="ti ti-user-circle"></i> <span id="nav-name-label">Account</span></button>
+  </div>
+</nav>
+
+<div class="main">
+
+  <!-- IMPORT -->
+  <div class="view active" id="view-import">
+    <div class="loaded-banner" id="loaded-banner">
+      <div class="loaded-top">
+        <div class="loaded-avatar" id="loaded-avatar"></div>
+        <div>
+          <div class="loaded-name" id="loaded-name"></div>
+          <div class="loaded-sub" id="loaded-sub"></div>
+        </div>
+      </div>
+      <div class="loaded-actions">
+        <button class="btn btn-primary" onclick="switchTab('search')"><i class="ti ti-search"></i> Search connections</button>
+        <button class="btn btn-secondary" onclick="switchTab('graph')"><i class="ti ti-share"></i> View graph</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('csv-file').click()"><i class="ti ti-refresh"></i> Re-upload CSV</button>
+      </div>
+    </div>
+
+    <div id="upload-hero-wrap">
+      <div class="upload-hero">
+        <h1>Your network, unlocked.</h1>
+        <p>Upload your LinkedIn connections export to search, visualize, and get smart insights about your professional network.</p>
+        <div class="upload-zone" id="dropzone" onclick="document.getElementById('csv-file').click()" ondragover="handleDrag(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <div class="upload-icon"><i class="ti ti-table-import"></i></div>
+          <h3>Drop your Connections.csv here</h3>
+          <p>or click to browse your files</p>
+        </div>
+        <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleFile(event)">
+        <p class="upload-hint">LinkedIn → Settings &amp; Privacy → Data Privacy → Download my data → select larger archive → Request archive</p>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="loadDemo()"><i class="ti ti-sparkles"></i> Load demo data</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('howto-modal').classList.add('visible')"><i class="ti ti-help-circle"></i> How to export</button>
+        </div>
+        <div class="features">
+          <div class="feature"><i class="ti ti-search"></i><h4>Smart search</h4><p>Find anyone by name, title, or company</p></div>
+          <div class="feature"><i class="ti ti-share"></i><h4>Network graph</h4><p>See your network as a visual web</p></div>
+          <div class="feature"><i class="ti ti-bulb"></i><h4>Insights</h4><p>Understand your network at a glance</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-card"><div class="stat-label">Connections</div><div class="stat-val" id="stat-total">0</div><div class="stat-sub">in your network</div></div>
+      <div class="stat-card"><div class="stat-label">Companies</div><div class="stat-val" id="stat-companies">0</div><div class="stat-sub">unique employers</div></div>
+      <div class="stat-card"><div class="stat-label">Top role</div><div class="stat-val" id="stat-role" style="font-size:14px;padding-top:6px">—</div><div class="stat-sub">most common title</div></div>
+      <div class="stat-card"><div class="stat-label">Newest</div><div class="stat-val" id="stat-newest" style="font-size:14px;padding-top:6px">—</div><div class="stat-sub">last connected</div></div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="view" id="view-search">
+    <div class="search-wrap">
+      <div class="search-top">
+        <h2><i class="ti ti-search" style="margin-right:6px"></i>Find connections</h2>
+        <div class="search-row">
+          <input type="text" class="search-input" id="search-input" placeholder="Search by name, title, company, or keyword…" oninput="doSearch()">
+          <button class="btn btn-primary btn-sm" onclick="doSearch()"><i class="ti ti-search"></i></button>
+        </div>
+      </div>
+      <div class="filter-row" id="filter-row"></div>
+      <div class="insight-banner" id="insight-banner"></div>
+      <div class="results-list" id="results-list">
+        <div class="empty-state"><i class="ti ti-users"></i><h3>No connections loaded</h3><p>Go to Import and upload your LinkedIn CSV or load demo data.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAPH -->
+  <div class="view" id="view-graph">
+    <div class="graph-wrap">
+      <div class="graph-header">
+        <h2><i class="ti ti-share" style="margin-right:6px"></i>Network graph</h2>
+        <div class="graph-header-actions">
+          <button class="btn btn-secondary btn-sm" onclick="zoomGraph(1.25)"><i class="ti ti-zoom-in"></i></button>
+          <button class="btn btn-secondary btn-sm" onclick="zoomGraph(0.8)"><i class="ti ti-zoom-out"></i></button>
+          <button class="btn btn-secondary btn-sm" onclick="resetGraph()"><i class="ti ti-refresh"></i> Reset</button>
+        </div>
+      </div>
+      <div id="graph-empty-state" class="empty-state"><i class="ti ti-share"></i><h3>No connections loaded</h3><p>Go to Import and upload your LinkedIn CSV or load demo data.</p></div>
+      <canvas id="graph-canvas" style="display:none" aria-label="Network graph of LinkedIn connections" role="img"></canvas>
+      <div class="graph-footer" id="graph-footer" style="display:none">
+        <div id="graph-legend" style="display:flex;gap:14px;flex-wrap:wrap;"></div>
+        <span class="graph-hint"><i class="ti ti-mouse"></i> Scroll to zoom · Drag to pan · Click node for details</span>
+      </div>
+      <div class="node-panel" id="node-panel">
+        <div class="panel-header">
+          <div class="avatar" id="panel-avatar"></div>
+          <div><div class="panel-name" id="panel-name"></div><div class="panel-title" id="panel-title"></div></div>
+        </div>
+        <div class="panel-meta" id="panel-meta"></div>
+        <div class="panel-bio" id="panel-bio"></div>
+        <div class="panel-actions">
+          <a id="panel-li-btn" href="#" target="_blank" class="btn btn-primary btn-sm"><i class="ti ti-brand-linkedin"></i> View on LinkedIn</a>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('node-panel').classList.remove('visible')"><i class="ti ti-x"></i> Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT -->
+  <div class="view" id="view-account">
+    <div class="account-wrap">
+      <div class="account-card">
+        <div class="account-hero">
+          <div class="account-avatar" id="account-avatar"></div>
+          <div>
+            <div class="account-name-text" id="account-display-name"></div>
+            <div class="account-sub" id="account-sub"></div>
+          </div>
+        </div>
+
+        <div class="section-title">Network overview</div>
+        <div class="account-stats">
+          <div class="account-stat"><div class="val" id="acc-total">—</div><div class="lbl">Connections</div></div>
+          <div class="account-stat"><div class="val" id="acc-companies">—</div><div class="lbl">Companies</div></div>
+          <div class="account-stat"><div class="val" id="acc-newest">—</div><div class="lbl">Last connected</div></div>
+        </div>
+
+        <div class="section-title">Profile settings</div>
+        <div class="account-row">
+          <span class="account-row-label">Display name</span>
+          <span class="account-row-value" id="account-name-val"></span>
+        </div>
+        <div class="edit-row">
+          <input type="text" class="field-input" id="edit-name-input" placeholder="Update your name">
+          <button class="btn btn-primary btn-sm" onclick="saveName()"><i class="ti ti-check"></i> Save</button>
+        </div>
+
+        <div style="margin-top:24px;padding-top:20px;border-top:0.5px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file').click()"><i class="ti ti-refresh"></i> Re-upload CSV</button>
+          <button class="btn btn-danger btn-sm" onclick="clearAllData()"><i class="ti ti-trash"></i> Clear all data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NAME ONBOARDING MODAL -->
+<div class="modal-overlay" id="name-modal">
+  <div class="modal">
+    <div class="modal-logo">Network<span>.</span>me</div>
+    <p style="margin-top:4px;margin-bottom:24px">Your LinkedIn network, visualized and searchable. Let's get you set up.</p>
+    <label class="field-label" for="onboard-name">What's your name?</label>
+    <input type="text" class="field-input" id="onboard-name" placeholder="e.g. Chase Sweers" autocomplete="name">
+    <button class="btn btn-primary" onclick="submitOnboardName()" style="width:100%"><i class="ti ti-arrow-right"></i> Continue</button>
+  </div>
+</div>
+
+<!-- HOW TO MODAL -->
+<div class="modal-overlay" id="howto-modal" onclick="if(event.target===this)this.classList.remove('visible')">
+  <div class="modal">
+    <h3><i class="ti ti-brand-linkedin" style="color:var(--blue);margin-right:6px"></i>How to export your LinkedIn connections</h3>
+    <p>Follow these steps to get your Connections.csv file from LinkedIn:</p>
+    <ol>
+      <li>Go to <strong>linkedin.com</strong> → click your profile picture → <strong>Settings &amp; Privacy</strong></li>
+      <li>Click <strong>Data Privacy</strong> in the left sidebar</li>
+      <li>Click <strong>Download my data</strong></li>
+      <li>Select the <strong>first option</strong> (Download larger data archive — this includes connections)</li>
+      <li>Click <strong>Request archive</strong> — LinkedIn will email you a download link</li>
+      <li>Download and unzip the file, then upload <strong>Connections.csv</strong> here</li>
+    </ol>
+    <div class="modal-close"><button class="btn btn-primary" onclick="document.getElementById('howto-modal').classList.remove('visible')">Got it</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════ INDEXED DB ═══════════════ */
+const DB_NAME = 'networkme_db', DB_VER = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('profile')) d.createObjectStore('profile');
+      if (!d.objectStoreNames.contains('connections')) d.createObjectStore('connections', {keyPath:'_idx', autoIncrement:true});
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(store,'readonly').objectStore(store).get(key);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbPut(store, val, key) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store,'readwrite');
+    const req = key !== undefined ? tx.objectStore(store).put(val, key) : tx.objectStore(store).put(val);
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbClear(store) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(store,'readwrite').objectStore(store).clear();
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(store,'readonly').objectStore(store).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function saveConnectionsToDB(conns) {
+  await dbClear('connections');
+  const tx = db.transaction('connections','readwrite');
+  const s = tx.objectStore('connections');
+  conns.forEach(c => s.add(c));
+  return new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+}
+
+/* ═══════════════ STATE ═══════════════ */
+let connections = [];
+let userName = '';
+
+/* ═══════════════ INIT ═══════════════ */
+async function init() {
+  await openDB();
+  const savedName = await dbGet('profile', 'name');
+  const savedConns = await dbGetAll('connections');
+  if (savedConns && savedConns.length > 0) connections = savedConns;
+
+  if (!savedName) {
+    document.getElementById('name-modal').classList.add('visible');
+    setTimeout(() => document.getElementById('onboard-name').focus(), 100);
+  } else {
+    userName = savedName;
+    updateNameUI();
+    if (connections.length > 0) onDataLoaded();
+  }
+}
+
+async function submitOnboardName() {
+  const val = document.getElementById('onboard-name').value.trim();
+  if (!val) { document.getElementById('onboard-name').focus(); return; }
+  userName = val;
+  await dbPut('profile', userName, 'name');
+  document.getElementById('name-modal').classList.remove('visible');
+  updateNameUI();
+  if (connections.length > 0) onDataLoaded();
+  showToast('Welcome, ' + userName.split(' ')[0] + '!');
+}
+
+document.getElementById('onboard-name').addEventListener('keydown', e => { if (e.key === 'Enter') submitOnboardName(); });
+
+function updateNameUI() {
+  const first = userName.split(' ')[0];
+  document.getElementById('nav-name-label').textContent = first;
+  document.getElementById('account-display-name').textContent = userName;
+  document.getElementById('account-name-val').textContent = userName;
+  document.getElementById('edit-name-input').value = userName;
+  document.getElementById('account-avatar').textContent = initials(userName);
+  document.getElementById('loaded-avatar').textContent = initials(userName);
+  document.getElementById('loaded-name').textContent = 'Welcome back, ' + first + '.';
+  document.getElementById('tab-account').style.display = 'flex';
+}
+
+async function saveName() {
+  const val = document.getElementById('edit-name-input').value.trim();
+  if (!val) return;
+  userName = val;
+  await dbPut('profile', userName, 'name');
+  updateNameUI();
+  showToast('Name updated');
+}
+
+async function clearAllData() {
+  if (!confirm('Clear all your data and start over? This cannot be undone.')) return;
+  await dbClear('connections');
+  await dbClear('profile');
+  location.reload();
+}
+
+/* ═══════════════ DEMO DATA ═══════════════ */
+const DEMO_DATA = [
+  {name:'Alex Chen',title:'Software Engineer',company:'Google',connected:'2023-03-15',url:'https://linkedin.com',email:''},
+  {name:'Maria Santos',title:'Product Manager',company:'Meta',connected:'2022-11-02',url:'https://linkedin.com',email:''},
+  {name:'Jordan Lee',title:'UX Designer',company:'Apple',connected:'2023-07-20',url:'https://linkedin.com',email:''},
+  {name:'Priya Kapoor',title:'Data Scientist',company:'Amazon',connected:'2021-06-10',url:'https://linkedin.com',email:''},
+  {name:'Tyler Brooks',title:'DevOps Engineer',company:'Cloudflare',connected:'2023-01-28',url:'https://linkedin.com',email:''},
+  {name:'Samantha Wu',title:'Engineering Manager',company:'Stripe',connected:'2022-04-14',url:'https://linkedin.com',email:''},
+  {name:'Marcus Johnson',title:'Cybersecurity Analyst',company:'CrowdStrike',connected:'2023-09-05',url:'https://linkedin.com',email:''},
+  {name:'Aisha Patel',title:'Full Stack Developer',company:'Shopify',connected:'2022-08-22',url:'https://linkedin.com',email:''},
+  {name:"Ryan O'Brien",title:'Backend Engineer',company:'Netflix',connected:'2023-05-11',url:'https://linkedin.com',email:''},
+  {name:'Yuki Tanaka',title:'ML Engineer',company:'OpenAI',connected:'2023-12-01',url:'https://linkedin.com',email:''},
+  {name:'Keisha Williams',title:'Product Designer',company:'Figma',connected:'2022-02-17',url:'https://linkedin.com',email:''},
+  {name:'Daniel Reyes',title:'Site Reliability Engineer',company:'GitHub',connected:'2023-10-30',url:'https://linkedin.com',email:''},
+  {name:'Fatima Al-Hassan',title:'Technical Program Manager',company:'Microsoft',connected:'2021-12-09',url:'https://linkedin.com',email:''},
+  {name:'Ethan Park',title:'iOS Developer',company:'Airbnb',connected:'2022-07-03',url:'https://linkedin.com',email:''},
+  {name:'Lena Müller',title:'Frontend Engineer',company:'Spotify',connected:'2023-02-19',url:'https://linkedin.com',email:''},
+  {name:'James Okonkwo',title:'Cloud Architect',company:'AWS',connected:'2022-10-25',url:'https://linkedin.com',email:''},
+  {name:'Chloe Martin',title:'Recruiting Manager',company:'LinkedIn',connected:'2023-06-07',url:'https://linkedin.com',email:''},
+  {name:'Raj Nair',title:'CTO',company:'FinTech Startup',connected:'2021-09-14',url:'https://linkedin.com',email:''},
+  {name:'Sofia Rossi',title:'Security Engineer',company:'Palo Alto Networks',connected:'2023-08-18',url:'https://linkedin.com',email:''},
+  {name:'Ben Nakamura',title:'Data Engineer',company:'Snowflake',connected:'2022-05-30',url:'https://linkedin.com',email:''},
+  {name:'Amara Diallo',title:'Product Manager',company:'Uber',connected:'2023-04-12',url:'https://linkedin.com',email:''},
+  {name:'Chris Fernandez',title:'Solutions Architect',company:'Salesforce',connected:'2022-01-08',url:'https://linkedin.com',email:''},
+  {name:'Nina Kozlov',title:'Research Scientist',company:'DeepMind',connected:'2023-11-22',url:'https://linkedin.com',email:''},
+  {name:'Omar Shaikh',title:'Android Developer',company:'Samsung',connected:'2022-09-16',url:'https://linkedin.com',email:''},
+  {name:'Hannah Kim',title:'Engineering Lead',company:'DoorDash',connected:'2023-03-28',url:'https://linkedin.com',email:''},
+  {name:'Luis Vargas',title:'Network Engineer',company:'Cisco',connected:'2021-11-05',url:'https://linkedin.com',email:''},
+  {name:'Zoe Thompson',title:'Scrum Master',company:'JPMorgan Chase',connected:'2022-12-20',url:'https://linkedin.com',email:''},
+  {name:'Kwame Asante',title:'VP Engineering',company:'Robinhood',connected:'2023-07-09',url:'https://linkedin.com',email:''},
+  {name:'Isabella Greco',title:'Technical Writer',company:'Atlassian',connected:'2022-03-11',url:'https://linkedin.com',email:''},
+  {name:'Derek Chang',title:'Blockchain Developer',company:'Coinbase',connected:'2023-01-14',url:'https://linkedin.com',email:''}
+];
+
+async function loadDemo() {
+  connections = DEMO_DATA;
+  await saveConnectionsToDB(connections);
+  onDataLoaded();
+  switchTab('search');
+  showToast('Demo data loaded');
+}
+
+/* ═══════════════ FILE HANDLING ═══════════════ */
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    parseCSV(ev.target.result);
+    await saveConnectionsToDB(connections);
+    onDataLoaded();
+    switchTab('search');
+    showToast(connections.length + ' connections loaded & saved');
+  };
+  reader.readAsText(file);
+}
+
+function handleDrag(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('drag'); }
+function handleDragLeave() { document.getElementById('dropzone').classList.remove('drag'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    parseCSV(ev.target.result);
+    await saveConnectionsToDB(connections);
+    onDataLoaded();
+    switchTab('search');
+    showToast(connections.length + ' connections loaded & saved');
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  let headers = null; connections = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i]);
+    if (!headers) { headers = cols.map(h => h.toLowerCase().trim()); continue; }
+    const row = {}; headers.forEach((h,idx) => { row[h] = (cols[idx]||'').trim(); });
+    const name = (row['first name']&&row['last name']) ? row['first name']+' '+row['last name'] : (row['name']||row['full name']||'Unknown');
+    connections.push({ name, title:row['position']||row['title']||row['job title']||'', company:row['company']||row['organization']||row['employer']||'', connected:row['connected on']||row['date connected']||row['connected']||'', url:row['profile url']||row['url']||'https://linkedin.com', email:row['email address']||row['email']||'' });
+  }
+}
+
+function splitCSVLine(line) {
+  const res = []; let cur = '', inQ = false;
+  for (const ch of line) {
+    if (ch==='"') inQ=!inQ;
+    else if (ch===',' && !inQ) { res.push(cur); cur=''; }
+    else cur+=ch;
+  }
+  res.push(cur); return res;
+}
+
+/* ═══════════════ DATA LOADED ═══════════════ */
+function onDataLoaded() {
+  document.getElementById('upload-hero-wrap').style.display = 'none';
+  document.getElementById('loaded-banner').classList.add('visible');
+
+  const companies = [...new Set(connections.map(c=>c.company).filter(Boolean))];
+  const dates = connections.map(c=>c.connected).filter(d=>d&&d.match(/\d{4}/)).sort().reverse();
+  const newestStr = dates[0] ? fmtDate(dates[0]) : '—';
+
+  document.getElementById('loaded-sub').textContent = connections.length + ' connections · ' + companies.length + ' companies · Last: ' + newestStr;
+  document.getElementById('stats-bar').style.display = 'grid';
+  document.getElementById('stat-total').textContent = connections.length;
+  document.getElementById('stat-companies').textContent = companies.length;
+
+  const words = {};
+  connections.forEach(c => { (c.title||'').toLowerCase().split(/\s+/).forEach(w => { if(w.length>4&&!['senior','junior','staff','lead','manager','engineer','director'].includes(w)) words[w]=(words[w]||0)+1; }); });
+  const topWord = Object.entries(words).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('stat-role').textContent = topWord ? topWord[0].charAt(0).toUpperCase()+topWord[0].slice(1) : '—';
+  document.getElementById('stat-newest').textContent = newestStr;
+
+  document.getElementById('acc-total').textContent = connections.length;
+  document.getElementById('acc-companies').textContent = companies.length;
+  document.getElementById('acc-newest').textContent = newestStr;
+  document.getElementById('account-sub').textContent = connections.length + ' connections · Last upload: ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+  document.getElementById('badge-count').textContent = connections.length;
+  document.getElementById('badge-count').style.display = 'inline-flex';
+
+  buildFilters(); doSearch();
+}
+
+function fmtDate(d) { try { const dt=new Date(d); return isNaN(dt)?d:dt.toLocaleDateString('en-US',{month:'short',year:'numeric'}); } catch{ return d; } }
+
+/* ═══════════════ SEARCH ═══════════════ */
+let activeFilter = '';
+
+function buildFilters() {
+  const companies = [...new Set(connections.map(c=>c.company).filter(Boolean))].slice(0,8);
+  const row = document.getElementById('filter-row'); row.innerHTML='';
+  const all = document.createElement('button'); all.className='filter-chip active'; all.textContent='All'; all.onclick=()=>setFilter('',all); row.appendChild(all);
+  companies.forEach(co => { const btn=document.createElement('button'); btn.className='filter-chip'; btn.textContent=co; btn.onclick=()=>setFilter(co,btn); row.appendChild(btn); });
+}
+
+function setFilter(val, el) { activeFilter=val; document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active')); el.classList.add('active'); doSearch(); }
+
+function doSearch() {
+  const q = (document.getElementById('search-input')||{value:''}).value.toLowerCase().trim();
+  let results = [...connections];
+  if (activeFilter) results=results.filter(c=>(c.company||'').toLowerCase().includes(activeFilter.toLowerCase()));
+  if (q) {
+    results=results.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.title||'').toLowerCase().includes(q)||(c.company||'').toLowerCase().includes(q));
+    results.sort((a,b)=>((b.name||'').toLowerCase().includes(q)?1:0)-((a.name||'').toLowerCase().includes(q)?1:0));
+  }
+  const banner=document.getElementById('insight-banner');
+  if(q&&results.length>0){const cos=[...new Set(results.map(c=>c.company).filter(Boolean))];banner.innerHTML=`<i class="ti ti-bulb" style="margin-right:5px"></i>${results.length} match${results.length>1?'es':''} across ${cos.length} compan${cos.length>1?'ies':'y'} — ${cos.slice(0,3).join(', ')}${cos.length>3?` +${cos.length-3} more`:''}`;banner.classList.add('visible');}else{banner.classList.remove('visible');}
+  renderResults(results.slice(0,50));
+}
+
+function renderResults(list) {
+  const cont = document.getElementById('results-list');
+  if (!connections.length) { cont.innerHTML='<div class="empty-state"><i class="ti ti-users"></i><h3>No connections loaded</h3><p>Go to Import and load your CSV or demo data.</p></div>'; return; }
+  if (!list.length) { cont.innerHTML='<div class="no-results"><i class="ti ti-search-off"></i>No connections match. Try a different search.</div>'; return; }
+  cont.innerHTML='';
+  list.forEach(c => {
+    const col=getAvatarColor(c.name), score=Math.min(99,55+Math.floor(seededRand(c.name)*43));
+    const div=document.createElement('div'); div.className='conn-card';
+    div.innerHTML=`<div class="avatar" style="background:${col.bg};color:${col.fg}">${initials(c.name)}</div><div class="conn-info"><div class="conn-name">${escHtml(c.name)}</div><div class="conn-title">${escHtml(c.title||'—')}${c.company?' <span style="color:var(--text-tertiary)">·</span> '+escHtml(c.company):''}</div><div class="conn-tags">${c.company?`<span class="conn-tag">${escHtml(c.company)}</span>`:''}${c.connected?`<span class="conn-tag">Since ${getYear(c.connected)}</span>`:''}</div></div><div class="match-score"><span class="match-pct">${score}%</span><span class="match-lbl">match</span></div><div class="conn-actions"><a href="${c.url||'https://linkedin.com'}" target="_blank" rel="noopener" class="btn btn-primary btn-sm"><i class="ti ti-brand-linkedin"></i> View</a></div>`;
+    cont.appendChild(div);
+  });
+}
+
+/* ═══════════════ GRAPH ═══════════════ */
+const COMPANY_COLORS={'Google':'#4285F4','Meta':'#0866FF','Apple':'#6B7280','Amazon':'#FF9900','Microsoft':'#00A4EF','Netflix':'#E50914','Stripe':'#635BFF','Cloudflare':'#F48120','OpenAI':'#10A37F','GitHub':'#24292E','AWS':'#FF9900','Coinbase':'#0052FF','Spotify':'#1DB954','Figma':'#F24E1E','Airbnb':'#FF5A5F','Uber':'#1a1a1a','Shopify':'#96BF48','Snowflake':'#29B5E8','Salesforce':'#00A1E0','LinkedIn':'#0A66C2','DoorDash':'#FF3008','Robinhood':'#00C805','Atlassian':'#0052CC','Cisco':'#1BA0D7','Palo Alto Networks':'#FA582D','Samsung':'#1428A0','DeepMind':'#4285F4','CrowdStrike':'#E50914'};
+const DEFAULT_NODE_COLORS=['#0A66C2','#7C3AED','#059669','#D97706','#DC2626','#0891B2','#9333EA','#0D9488'];
+function getNodeColor(co){if(!co)return DEFAULT_NODE_COLORS[0];for(const[k,v]of Object.entries(COMPANY_COLORS))if(co.includes(k))return v;return DEFAULT_NODE_COLORS[Math.floor(seededRand(co)*DEFAULT_NODE_COLORS.length)];}
+
+let nodes=[],edges=[],graphScale=1,graphOffsetX=0,graphOffsetY=0,isDragging=false,lastMouseX=0,lastMouseY=0,hoveredNode=null;
+
+function buildGraph(){
+  const canvas=document.getElementById('graph-canvas'),emptyState=document.getElementById('graph-empty-state'),footer=document.getElementById('graph-footer');
+  if(!connections.length){emptyState.style.display='block';canvas.style.display='none';footer.style.display='none';return;}
+  emptyState.style.display='none';canvas.style.display='block';footer.style.display='flex';
+  document.getElementById('node-panel').classList.remove('visible');
+  canvas.width=canvas.offsetWidth||860;canvas.height=520;
+  graphScale=1;graphOffsetX=0;graphOffsetY=0;nodes=[];edges=[];
+  const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+  const sample=connections.slice(0,60);
+  const companies=[...new Set(sample.map(c=>c.company||'Other'))];
+  const centerLabel=userName?userName.split(' ')[0]:'You';
+  nodes.push({id:'you',label:centerLabel,x:cx,y:cy,r:20,color:'#0A66C2',type:'self',data:null});
+  sample.forEach((c,i)=>{
+    const cIdx=companies.indexOf(c.company||'Other');
+    const angle=(cIdx/companies.length)*Math.PI*2+(seededRand(c.name+i)-0.5)*0.9;
+    const dist=130+seededRand(c.name)*120;
+    nodes.push({id:'c'+i,label:c.name,x:cx+Math.cos(angle)*dist,y:cy+Math.sin(angle)*dist,r:9,color:getNodeColor(c.company),type:'connection',data:c});
+    edges.push({from:'you',to:'c'+i});
+  });
+  buildGraphLegend(companies.slice(0,7));setupCanvas(canvas);drawGraph();
+}
+
+function buildGraphLegend(companies){const leg=document.getElementById('graph-legend');leg.innerHTML='';companies.forEach(co=>{const item=document.createElement('div');item.className='legend-item';item.innerHTML=`<span class="legend-dot" style="background:${getNodeColor(co)}"></span>${escHtml(co||'Other')}`;leg.appendChild(item);});}
+
+function setupCanvas(canvas){
+  canvas.onmousedown=e=>{isDragging=false;lastMouseX=e.clientX;lastMouseY=e.clientY;canvas._down=true;};
+  canvas.onmousemove=e=>{
+    const rect=canvas.getBoundingClientRect();
+    if(canvas._down&&(Math.abs(e.clientX-lastMouseX)>2||Math.abs(e.clientY-lastMouseY)>2)){isDragging=true;graphOffsetX+=e.clientX-lastMouseX;graphOffsetY+=e.clientY-lastMouseY;lastMouseX=e.clientX;lastMouseY=e.clientY;}
+    const mx=(e.clientX-rect.left-graphOffsetX)/graphScale,my=(e.clientY-rect.top-graphOffsetY)/graphScale;
+    hoveredNode=nodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+5)||null;
+    canvas.style.cursor=hoveredNode&&hoveredNode.type!=='self'?'pointer':isDragging?'grabbing':'grab';
+    drawGraph();
+  };
+  canvas.onmouseup=e=>{
+    canvas._down=false;
+    if(!isDragging){const rect=canvas.getBoundingClientRect();const mx=(e.clientX-rect.left-graphOffsetX)/graphScale,my=(e.clientY-rect.top-graphOffsetY)/graphScale;const clicked=nodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+5);if(clicked&&clicked.type==='connection')showPanel(clicked.data);}
+    isDragging=false;
+  };
+  canvas.onwheel=e=>{e.preventDefault();zoomGraph(e.deltaY>0?0.9:1.1);};
+}
+
+function drawGraph(){
+  const canvas=document.getElementById('graph-canvas');if(!canvas||!nodes.length)return;
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  const dark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(graphOffsetX,graphOffsetY);ctx.scale(graphScale,graphScale);
+  edges.forEach(e=>{const f=nodes.find(n=>n.id===e.from),t=nodes.find(n=>n.id===e.to);if(!f||!t)return;ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(t.x,t.y);ctx.strokeStyle=dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';ctx.lineWidth=0.8;ctx.stroke();});
+  nodes.forEach(n=>{
+    const hov=hoveredNode&&hoveredNode.id===n.id;
+    if(hov&&n.type!=='self'){ctx.beginPath();ctx.arc(n.x,n.y,n.r+6,0,Math.PI*2);ctx.fillStyle=n.color+'22';ctx.fill();}
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r+(hov?2:0),0,Math.PI*2);ctx.fillStyle=n.color;ctx.fill();
+    if(n.type==='self'){ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.stroke();ctx.font='bold 10px DM Sans,sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.label,n.x,n.y);}
+    else if(hov||graphScale>1.5){ctx.font='11px DM Sans,sans-serif';ctx.fillStyle=dark?'rgba(240,239,235,0.9)':'rgba(26,26,24,0.75)';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(n.label.split(' ')[0],n.x,n.y+n.r+3);}
+  });
+  ctx.restore();
+}
+
+function zoomGraph(f){graphScale=Math.max(0.35,Math.min(4,graphScale*f));drawGraph();}
+function resetGraph(){graphScale=1;graphOffsetX=0;graphOffsetY=0;drawGraph();}
+
+function showPanel(c){
+  const col=getAvatarColor(c.name),av=document.getElementById('panel-avatar');
+  av.style.background=col.bg;av.style.color=col.fg;av.textContent=initials(c.name);
+  document.getElementById('panel-name').textContent=c.name;
+  document.getElementById('panel-title').textContent=c.title||(c.company?'Works at '+c.company:'');
+  document.getElementById('panel-meta').innerHTML=`<span class="panel-meta-item"><strong>Company</strong> ${escHtml(c.company||'—')}</span>${c.connected?`<span class="panel-meta-item"><strong>Connected</strong> ${escHtml(c.connected)}</span>`:''}${c.email?`<span class="panel-meta-item"><strong>Email</strong> ${escHtml(c.email)}</span>`:''}`;
+  document.getElementById('panel-bio').textContent=`${c.name} is a ${c.title||'professional'}${c.company?' at '+c.company:''}. They are part of your direct LinkedIn network and can be a valuable contact for introductions, referrals, or industry conversations.`;
+  document.getElementById('panel-li-btn').href=c.url||'https://linkedin.com';
+  document.getElementById('node-panel').classList.add('visible');
+}
+
+/* ═══════════════ HELPERS ═══════════════ */
+const AVATAR_COLORS=[{bg:'#E8F0FE',fg:'#1A56CC'},{bg:'#E6F3EB',fg:'#1A6639'},{bg:'#FEF3E8',fg:'#B45309'},{bg:'#F3E8FE',fg:'#7C3AED'},{bg:'#FCE8E8',fg:'#B91C1C'},{bg:'#E8F8FE',fg:'#0369A1'},{bg:'#FEF9E8',fg:'#92400E'},{bg:'#F0FEF0',fg:'#166534'}];
+function getAvatarColor(name){let h=0;for(const c of(name||''))h=(h*31+c.charCodeAt(0))&0xffff;return AVATAR_COLORS[h%AVATAR_COLORS.length];}
+function initials(name){return(name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
+function seededRand(s){let h=0;for(const c of s)h=(Math.imul(31,h)+c.charCodeAt(0))|0;return Math.abs(h)/2147483647;}
+function escHtml(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function getYear(d){try{const y=new Date(d).getFullYear();return isNaN(y)?d:y;}catch{return d;}}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+/* ═══════════════ TABS ═══════════════ */
+function switchTab(tab){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='graph')setTimeout(()=>buildGraph(),60);
+}
+
+window.addEventListener('resize',()=>{if(document.getElementById('view-graph').classList.contains('active'))buildGraph();});
+
+init();
+</script>
+</body>
+</html>
