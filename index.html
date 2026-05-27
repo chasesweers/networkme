@@ -126,6 +126,7 @@
 
     /* LAYOUT */
     .main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+    .main:has(#view-graph.active) { max-width: 1320px; }
 
     /* VIEWS */
     .view { display: none; }
@@ -310,10 +311,20 @@
     .no-results i { font-size: 28px; display: block; margin-bottom: 10px; color: var(--text-tertiary); }
 
     /* GRAPH VIEW */
-    .graph-wrap { position: relative; background: var(--bg); border-radius: var(--radius-xl); border: 0.5px solid var(--border); overflow: hidden; }
-    .graph-header { padding: 16px 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .graph-wrap {
+      position: relative;
+      background: var(--bg);
+      border-radius: var(--radius-xl);
+      border: 0.5px solid var(--border);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      grid-template-rows: auto 1fr auto;
+    }
+    .graph-header { grid-column: 1 / -1; padding: 16px 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .graph-header h2 { font-size: 15px; font-weight: 500; }
     .graph-header-actions { display: flex; gap: 8px; }
+    .graph-main { grid-column: 1; grid-row: 2 / 4; display: flex; flex-direction: column; min-width: 0; }
     #graph-canvas {
       width: 100%;
       height: 520px;
@@ -322,6 +333,81 @@
       cursor: grab;
     }
     #graph-canvas:active { cursor: grabbing; }
+    .graph-filters {
+      grid-column: 2; grid-row: 2 / 4;
+      border-left: 0.5px solid var(--border);
+      padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 16px;
+      overflow-y: auto;
+      max-height: 600px;
+    }
+    .filter-section-title {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; font-weight: 500; color: var(--text);
+    }
+    .filter-clear { background: transparent; border: none; color: var(--text-tertiary); font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 2px 4px; border-radius: 4px; }
+    .filter-clear:hover { color: var(--text); background: var(--bg-secondary); }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group > label {
+      font-size: 11px; color: var(--text-tertiary);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .filter-group input[type="text"], .filter-group select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 0.5px solid var(--border-secondary);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+    }
+    .filter-group input[type="text"]:focus, .filter-group select:focus { outline: none; border-color: var(--blue); background: var(--bg); }
+    .filter-checkbox-list {
+      max-height: 140px;
+      overflow-y: auto;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      background: var(--bg-secondary);
+    }
+    .filter-checkbox-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .filter-checkbox-row:hover { background: var(--bg); }
+    .filter-checkbox-row input { margin: 0; cursor: pointer; }
+    .filter-checkbox-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .filter-checkbox-empty { padding: 8px; font-size: 11px; color: var(--text-tertiary); font-style: italic; }
+    .filter-rel-wrap { position: relative; }
+    .filter-suggest {
+      display: none;
+      position: absolute;
+      top: calc(100% + 2px); left: 0; right: 0;
+      max-height: 160px; overflow-y: auto;
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      z-index: 30;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .filter-suggest.visible { display: block; }
+    .filter-suggest-row { padding: 6px 10px; cursor: pointer; font-size: 12px; border-bottom: 0.5px solid var(--border); }
+    .filter-suggest-row:last-child { border-bottom: none; }
+    .filter-suggest-row:hover { background: var(--bg-secondary); }
+    .filter-suggest-row-sub { font-size: 10px; color: var(--text-tertiary); margin-top: 1px; }
+    .filter-match-count { font-size: 11px; color: var(--text-tertiary); padding-top: 4px; border-top: 0.5px dashed var(--border); }
+    .filter-collapse-toggle { display: none; }
+    @media (max-width: 760px) {
+      .graph-wrap { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; }
+      .graph-filters { grid-column: 1; grid-row: auto; border-left: none; border-bottom: 0.5px solid var(--border); max-height: none; }
+      .graph-filters.collapsed > *:not(.filter-section-title) { display: none; }
+      .graph-main { grid-column: 1; grid-row: auto; }
+      .filter-collapse-toggle { display: inline-flex; }
+    }
     .graph-footer {
       padding: 10px 20px;
       border-top: 0.5px solid var(--border);
@@ -909,19 +995,58 @@
         </div>
       </div>
 
-      <div id="graph-empty-state" class="empty-state">
-        <i class="ti ti-share"></i>
-        <h3>No connections loaded</h3>
-        <p>Go to Import and upload your LinkedIn CSV or load the demo data.</p>
+      <div class="graph-main">
+        <div id="graph-empty-state" class="empty-state">
+          <i class="ti ti-share"></i>
+          <h3>No connections loaded</h3>
+          <p>Go to Import and upload your LinkedIn CSV or load the demo data.</p>
+        </div>
+
+        <canvas id="graph-canvas" style="display:none"
+                aria-label="Network graph of LinkedIn connections"
+                role="img"></canvas>
+
+        <div class="graph-footer" id="graph-footer" style="display:none">
+          <div id="graph-legend" style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0"></div>
+          <span class="graph-hint"><i class="ti ti-mouse"></i> Scroll to zoom · Drag to pan · Click node for details</span>
+        </div>
       </div>
 
-      <canvas id="graph-canvas" style="display:none"
-              aria-label="Network graph of LinkedIn connections"
-              role="img"></canvas>
+      <div class="graph-filters" id="graph-filters">
+        <div class="filter-section-title">
+          <span><i class="ti ti-filter" style="margin-right:4px"></i>Filters</span>
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="filter-clear" onclick="clearFilters()">Clear all</button>
+            <button class="filter-clear filter-collapse-toggle" onclick="toggleFilterCollapse()" aria-label="Toggle filters">
+              <i class="ti ti-chevron-down"></i>
+            </button>
+          </div>
+        </div>
 
-      <div class="graph-footer" id="graph-footer" style="display:none">
-        <div id="graph-legend" style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0"></div>
-        <span class="graph-hint"><i class="ti ti-mouse"></i> Scroll to zoom · Drag to pan · Click node for details</span>
+        <div class="filter-group">
+          <label>Company</label>
+          <input type="text" id="filter-company-search" placeholder="Search companies…" oninput="renderCompanyChecklist()">
+          <div class="filter-checkbox-list" id="filter-company-list"></div>
+        </div>
+
+        <div class="filter-group">
+          <label>Position</label>
+          <div class="filter-rel-wrap">
+            <input type="text" id="filter-title" placeholder="e.g. designer, engineer" autocomplete="off" oninput="onFilterTitleInput()" onfocus="onFilterTitleInput()">
+            <div class="filter-suggest" id="filter-title-suggest"></div>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Related to</label>
+          <div class="filter-rel-wrap">
+            <input type="text" id="filter-rel-person" placeholder="Search a connection…" autocomplete="off" oninput="onFilterPersonInput()">
+            <div class="filter-suggest" id="filter-rel-suggest"></div>
+          </div>
+          <select id="filter-rel-type" onchange="applyFilters()"></select>
+        </div>
+
+        <div class="filter-match-count" id="filter-match-count"></div>
       </div>
 
       <div class="node-panel" id="node-panel">
@@ -1556,6 +1681,7 @@
 
     currentLegendCompanies = companies.slice(0,7);
     buildGraphLegend(currentLegendCompanies);
+    syncFilterUIToData();
     setupCanvas(canvas);
     drawGraph();
   }
@@ -1685,21 +1811,41 @@
     ctx.translate(graphOffsetX,graphOffsetY);
     ctx.scale(graphScale,graphScale);
 
+    // Compute per-node match state once (used for dimming + match count)
+    const filterActive = graphFilter.companies.size > 0
+      || !!graphFilter.titleQuery
+      || !!graphFilter.relPersonKey;
+    const nodeMatches = new Map();
+    let matchCount = 0, totalConn = 0;
+    nodes.forEach(n => {
+      if (n.type === 'self') { nodeMatches.set(n.id, !filterActive); return; }
+      totalConn++;
+      const ok = connectionMatches(n.data);
+      if (ok) matchCount++;
+      nodeMatches.set(n.id, ok);
+    });
+    updateMatchCount(matchCount, totalConn);
+    const DIM = 0.15;
+
     // Scaffold edges (you ↔ connection)
     edges.forEach(e=>{
       const f=nodes.find(n=>n.id===e.from), t=nodes.find(n=>n.id===e.to);
       if(!f||!t) return;
+      const both = nodeMatches.get(f.id) && nodeMatches.get(t.id);
+      ctx.globalAlpha = both ? 1 : DIM;
       ctx.beginPath(); ctx.moveTo(f.x,f.y); ctx.lineTo(t.x,t.y);
       ctx.strokeStyle=dark?'rgba(255,255,255,0.55)':'rgba(140,140,140,0.55)';
       ctx.lineWidth=0.9; ctx.stroke();
     });
+    ctx.globalAlpha = 1;
 
     // Relationship edges (between connections) — drawn between scaffold and nodes
-    drawRelationshipEdges(ctx, dark);
+    drawRelationshipEdges(ctx, dark, nodeMatches, DIM);
 
     // Pass 1: dots (glow, halo, filled circle, stroke, self name)
     nodes.forEach(n=>{
       const hovered=hoveredNode&&hoveredNode.id===n.id;
+      ctx.globalAlpha = nodeMatches.get(n.id) ? 1 : DIM;
       if(n.type==='self'){
         const glow=ctx.createRadialGradient(n.x,n.y,n.r*0.6,n.x,n.y,n.r+18);
         glow.addColorStop(0, n.color+'55');
@@ -1728,21 +1874,64 @@
         ctx.fillText(truncated, n.x, n.y);
       }
     });
+    ctx.globalAlpha = 1;
 
     // Pass 2: connection labels — drawn after all dots so they're never clipped
+    const pickedKey = graphFilter.relPersonKey;
     nodes.forEach(n=>{
       if (n.type === 'self') return;
       const hovered = hoveredNode && hoveredNode.id === n.id;
       if (hovered) return; // hovered label drawn last
-      if (graphScale > 1.4) drawLabelPill(ctx, graphLabel(n.label), n.x, n.y+n.r+8, dark);
+      if (pickedKey && n.data && personKey(n.data) === pickedKey) return; // picked label drawn very last
+      const isMatch = nodeMatches.get(n.id);
+      const showLabel = graphScale > 1.4 || (filterActive && isMatch);
+      if (!showLabel) return;
+      ctx.globalAlpha = isMatch ? 1 : DIM;
+      drawLabelPill(ctx, graphLabel(n.label), n.x, n.y+n.r+8, dark);
     });
-    // Hovered node's label drawn very last so it sits on top of every other label too
+    ctx.globalAlpha = 1;
+    // Hovered node's label drawn after regular labels
     if (hoveredNode && hoveredNode.type !== 'self') {
-      drawLabelPill(ctx, graphLabel(hoveredNode.label), hoveredNode.x, hoveredNode.y+hoveredNode.r+8, dark);
+      const isPicked = pickedKey && hoveredNode.data && personKey(hoveredNode.data) === pickedKey;
+      if (!isPicked) {
+        ctx.globalAlpha = nodeMatches.get(hoveredNode.id) ? 1 : DIM;
+        drawLabelPill(ctx, graphLabel(hoveredNode.label), hoveredNode.x, hoveredNode.y+hoveredNode.r+8, dark);
+        ctx.globalAlpha = 1;
+      }
+    }
+    // Picked "Related to" person drawn very last with distinct styling + ring on the dot
+    if (pickedKey) {
+      const picked = nodes.find(n => n.type === 'connection' && n.data && personKey(n.data) === pickedKey);
+      if (picked) {
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(picked.x, picked.y, picked.r + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#0A66C2';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        drawHighlightLabelPill(ctx, picked.label, picked.x, picked.y + picked.r + 10);
+      }
     }
 
     ctx.restore();
     positionPanel();
+  }
+
+  function drawHighlightLabelPill(ctx, text, cx, top){
+    const truncated = text.length > 24 ? text.slice(0,23)+'…' : text;
+    ctx.font='700 13px DM Sans,sans-serif';
+    const metrics = ctx.measureText(truncated);
+    const padX=10, h=22;
+    const w=metrics.width+padX*2;
+    const x=cx-w/2, y=top;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x,y,w,h,11);
+    else ctx.rect(x,y,w,h);
+    ctx.fillStyle='#0A66C2';
+    ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(truncated, cx, y+h/2+0.5);
   }
 
   const NAME_PREFIXES = /^(dr|mr|mrs|ms|mx|prof|professor|rev|sir|dame|lord|lady|hon|capt|col|gen|lt|sgt|rep|sen|gov|amb|fr|sr|br|rabbi|imam|sheikh)\.?$/i;
@@ -1819,11 +2008,13 @@
     return out;
   }
 
-  function drawRelationshipEdges(ctx, dark){
+  function drawRelationshipEdges(ctx, dark, nodeMatches, DIM){
     if (!nodes.length) return;
     const all = computeAllEdges();
     all.forEach(({ fromNode: f, toNode: t, type, isAuto }) => {
       if (!isTypeVisible(type.id)) return;
+      const both = !nodeMatches || (nodeMatches.get(f.id) && nodeMatches.get(t.id));
+      ctx.globalAlpha = both ? 1 : (DIM ?? 0.15);
       const midX = (f.x + t.x) / 2;
       const midY = (f.y + t.y) / 2;
       const dx = t.x - f.x, dy = t.y - f.y;
@@ -1839,6 +2030,7 @@
       ctx.lineWidth = isAuto ? 1.1 : 1.6;
       ctx.stroke();
     });
+    ctx.globalAlpha = 1;
   }
 
   function zoomGraph(f){ graphScale=Math.max(0.35,Math.min(4,graphScale*f)); drawGraph(); }
@@ -2107,6 +2299,218 @@
     renderRelationshipsList(currentProfileConn);
     refreshGraphAndLegend();
   }
+
+  /* ── GRAPH FILTERS ────────────────────────────────────────── */
+  const graphFilter = {
+    companies: new Set(),
+    titleQuery: '',
+    relPersonKey: null,
+    relTypeId: '__any__',
+  };
+  let filterPersonSuggestMatches = [];
+
+  function connectionMatches(c) {
+    if (!c) return true;
+    if (graphFilter.companies.size > 0 && !graphFilter.companies.has(c.company || '')) return false;
+    if (graphFilter.titleQuery) {
+      const t = (c.title || '').toLowerCase();
+      if (!t.includes(graphFilter.titleQuery)) return false;
+    }
+    if (graphFilter.relPersonKey) {
+      const myKey = personKey(c);
+      if (myKey === graphFilter.relPersonKey) return true; // picked person themselves stays vivid
+      const [a, b] = canonPair(myKey, graphFilter.relPersonKey);
+      let has = relationships.some(r =>
+        r.a === a && r.b === b &&
+        (graphFilter.relTypeId === '__any__' || r.typeId === graphFilter.relTypeId)
+      );
+      // Auto coworker edges (shared company) aren't in the persisted relationships array
+      if (!has && (graphFilter.relTypeId === '__any__' || graphFilter.relTypeId === 'coworker')) {
+        const picked = findConnectionByKey(graphFilter.relPersonKey);
+        if (picked && picked.company && c.company && picked.company === c.company) {
+          has = true;
+        }
+      }
+      if (!has) return false;
+    }
+    return true;
+  }
+
+  function applyFilters() {
+    graphFilter.titleQuery = (document.getElementById('filter-title')?.value || '').trim().toLowerCase();
+    const relTypeSel = document.getElementById('filter-rel-type');
+    if (relTypeSel) graphFilter.relTypeId = relTypeSel.value || '__any__';
+    drawGraph();
+  }
+
+  function updateMatchCount(matched, total) {
+    const el = document.getElementById('filter-match-count');
+    if (!el) return;
+    const active = graphFilter.companies.size > 0 || graphFilter.titleQuery || graphFilter.relPersonKey;
+    el.textContent = active ? `${matched} of ${total} visible` : `${total} connections`;
+  }
+
+  function syncFilterUIToData() {
+    renderCompanyChecklist();
+    populateRelTypeDropdown();
+    // Drop stale company selections that aren't in the data anymore
+    const present = new Set(connections.map(c => c.company || '').filter(Boolean));
+    [...graphFilter.companies].forEach(co => { if (!present.has(co)) graphFilter.companies.delete(co); });
+  }
+
+  function getCompanyList() {
+    const set = new Set();
+    connections.forEach(c => { if (c.company) set.add(c.company); });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderCompanyChecklist() {
+    const list = document.getElementById('filter-company-list');
+    if (!list) return;
+    const q = (document.getElementById('filter-company-search')?.value || '').toLowerCase();
+    const items = getCompanyList().filter(co => !q || co.toLowerCase().includes(q));
+    if (items.length === 0) {
+      list.innerHTML = '<div class="filter-checkbox-empty">No companies match.</div>';
+      return;
+    }
+    list.innerHTML = items.map(co => `
+      <label class="filter-checkbox-row">
+        <input type="checkbox" value="${escAttr(co)}" ${graphFilter.companies.has(co) ? 'checked' : ''} onchange="toggleCompanyFilter(this.value, this.checked)">
+        <span>${escHtml(co)}</span>
+      </label>`).join('');
+  }
+
+  function escAttr(s) { return (s||'').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+  function toggleCompanyFilter(co, checked) {
+    if (checked) graphFilter.companies.add(co);
+    else graphFilter.companies.delete(co);
+    drawGraph();
+  }
+
+  function populateRelTypeDropdown() {
+    const sel = document.getElementById('filter-rel-type');
+    if (!sel) return;
+    const prev = sel.value || '__any__';
+    sel.innerHTML = '<option value="__any__">Any relationship</option>' +
+      allRelationshipTypes().map(t => `<option value="${t.id}">${escHtml(t.label)}</option>`).join('');
+    sel.value = allRelationshipTypes().some(t => t.id === prev) || prev === '__any__' ? prev : '__any__';
+  }
+
+  function getTitleList() {
+    const counts = new Map();
+    connections.forEach(c => {
+      const t = (c.title || '').trim();
+      if (!t) return;
+      counts.set(t, (counts.get(t) || 0) + 1);
+    });
+    // Sort: most common first, then alphabetical
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([title, count]) => ({ title, count }));
+  }
+
+  function onFilterTitleInput() {
+    const input = document.getElementById('filter-title');
+    const sug = document.getElementById('filter-title-suggest');
+    if (!input || !sug) return;
+    const q = input.value.trim().toLowerCase();
+    const all = getTitleList();
+    const matches = q
+      ? all.filter(t => t.title.toLowerCase().includes(q)).slice(0, 10)
+      : all.slice(0, 10);
+    if (matches.length === 0) {
+      sug.innerHTML = '<div class="filter-suggest-row" style="cursor:default;color:var(--text-tertiary)">No matches</div>';
+    } else {
+      sug.innerHTML = matches.map((m, i) => `
+        <div class="filter-suggest-row" onclick="selectFilterTitle(${i})">
+          <div>${escHtml(m.title)}</div>
+          <div class="filter-suggest-row-sub">${m.count} ${m.count === 1 ? 'person' : 'people'}</div>
+        </div>`).join('');
+      sug._matches = matches;
+    }
+    sug.classList.add('visible');
+    applyFilters();
+  }
+
+  function selectFilterTitle(idx) {
+    const sug = document.getElementById('filter-title-suggest');
+    const m = sug._matches && sug._matches[idx];
+    if (!m) return;
+    document.getElementById('filter-title').value = m.title;
+    sug.classList.remove('visible');
+    applyFilters();
+  }
+
+  function onFilterPersonInput() {
+    const input = document.getElementById('filter-rel-person');
+    const sug = document.getElementById('filter-rel-suggest');
+    if (!input || !sug) return;
+    const q = input.value.trim().toLowerCase();
+    if (!q) {
+      sug.classList.remove('visible');
+      if (graphFilter.relPersonKey) {
+        graphFilter.relPersonKey = null;
+        drawGraph();
+      }
+      return;
+    }
+    const matches = connections
+      .filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q))
+      .slice(0, 8);
+    filterPersonSuggestMatches = matches;
+    if (matches.length === 0) {
+      sug.innerHTML = '<div class="filter-suggest-row" style="cursor:default;color:var(--text-tertiary)">No matches</div>';
+    } else {
+      sug.innerHTML = matches.map((c, i) => `
+        <div class="filter-suggest-row" onclick="selectFilterPerson(${i})">
+          <div>${escHtml(c.name)}</div>
+          <div class="filter-suggest-row-sub">${escHtml(c.title||'')}${c.company?` · ${escHtml(c.company)}`:''}</div>
+        </div>`).join('');
+    }
+    sug.classList.add('visible');
+  }
+
+  function selectFilterPerson(idx) {
+    const c = filterPersonSuggestMatches[idx];
+    if (!c) return;
+    graphFilter.relPersonKey = personKey(c);
+    document.getElementById('filter-rel-person').value = c.name;
+    document.getElementById('filter-rel-suggest').classList.remove('visible');
+    drawGraph();
+  }
+
+  function clearFilters() {
+    graphFilter.companies.clear();
+    graphFilter.titleQuery = '';
+    graphFilter.relPersonKey = null;
+    graphFilter.relTypeId = '__any__';
+    const titleInput = document.getElementById('filter-title');
+    if (titleInput) titleInput.value = '';
+    const personInput = document.getElementById('filter-rel-person');
+    if (personInput) personInput.value = '';
+    const typeSel = document.getElementById('filter-rel-type');
+    if (typeSel) typeSel.value = '__any__';
+    const coSearch = document.getElementById('filter-company-search');
+    if (coSearch) coSearch.value = '';
+    document.getElementById('filter-rel-suggest')?.classList.remove('visible');
+    document.getElementById('filter-title-suggest')?.classList.remove('visible');
+    renderCompanyChecklist();
+    drawGraph();
+  }
+
+  function toggleFilterCollapse() {
+    document.getElementById('graph-filters')?.classList.toggle('collapsed');
+  }
+
+  // Close filter suggestion dropdowns when clicking outside their wrappers
+  document.addEventListener('click', e => {
+    document.querySelectorAll('.filter-rel-wrap').forEach(wrap => {
+      if (!wrap.contains(e.target)) {
+        wrap.querySelector('.filter-suggest')?.classList.remove('visible');
+      }
+    });
+  });
 
   async function loadNote(c) {
     try { return await dbGet(noteKey(c)) || ''; }
