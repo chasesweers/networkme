@@ -1092,6 +1092,9 @@
               <div class="profile-title-co" id="prof-title-co"></div>
             </div>
             <div class="profile-header-actions">
+              <button class="btn btn-white btn-sm" onclick="viewInNetworkMap()">
+                <i class="ti ti-share"></i> View in Network Map
+              </button>
               <a id="prof-li-btn" href="#" target="_blank" rel="noopener" class="btn btn-white btn-sm">
                 <i class="ti ti-brand-linkedin"></i> LinkedIn
               </a>
@@ -1421,19 +1424,29 @@
   }
 
   function parseCSV(text) {
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split('\n');
     let headers = null;
     let rawRows = [];
     connections = [];
     for(let i = 0; i < lines.length; i++) {
-      const cols = splitCSVLine(lines[i]);
-      if(!headers) { headers = cols.map(h => h.toLowerCase().trim()); continue; }
-      rawRows.push(cols.map(c=>(c||'').trim()));
+      const line = lines[i];
+      if(!line.trim()) continue;
+      const cols = splitCSVLine(line);
+      // Skip preamble lines until we find the real header row (contains "first name")
+      if(!headers) {
+        const candidate = cols.map(h => h.toLowerCase().trim());
+        if(candidate.includes('first name') || candidate.includes('name')) {
+          headers = candidate;
+        }
+        continue;
+      }
       const row = {};
       headers.forEach((h, idx) => { row[h] = (cols[idx]||'').trim(); });
       const fname = row['first name']||'';
       const lname = row['last name']||'';
-      const name = fname && lname ? fname+' '+lname : (row['name']||row['full name']||'Unknown');
+      const name = fname && lname ? fname+' '+lname : (row['name']||row['full name']||'');
+      if(!name) continue; // skip blank/empty rows
+      rawRows.push(cols.map(c=>(c||'').trim()));
       connections.push({
         name,
         title:   row['position']||row['title']||row['job title']||'',
@@ -1546,7 +1559,7 @@
       banner.innerHTML=`<i class="ti ti-bulb" style="margin-right:5px"></i>${results.length} match${results.length>1?'es':''} found across ${cos.length} compan${cos.length>1?'ies':'y'} — ${cos.slice(0,3).join(', ')}${cos.length>3?` +${cos.length-3} more`:''}`;
       banner.classList.add('visible');
     } else { banner.classList.remove('visible'); }
-    renderResults(results.slice(0,50));
+    renderResults(results);
   }
 
   async function renderResults(list) {
@@ -1630,6 +1643,7 @@
   let graphScale=1, graphOffsetX=0, graphOffsetY=0;
   let isDragging=false, lastMouseX=0, lastMouseY=0;
   let hoveredNode=null;
+  let highlightedConn=null; // connection to highlight from "View in Network Map"
 
   function buildGraph() {
     const canvas=document.getElementById('graph-canvas');
@@ -1653,11 +1667,12 @@
 
     const W=canvas.width, H=canvas.height;
     const cx=W/2, cy=H/2;
-    const sample=connections.slice(0,60);
+    const sample=connections;
     const companies=[...new Set(sample.map(c=>c.company||'Other'))];
 
     nodes.push({id:'you',label:'You',x:cx,y:cy,r:28,color:'#0A66C2',type:'self',data:null});
 
+    const nodeR = sample.length > 150 ? 8 : sample.length > 80 ? 10 : 13;
     sample.forEach((c,i)=>{
       const cIdx=companies.indexOf(c.company||'Other');
       const baseAngle=(cIdx/companies.length)*Math.PI*2;
@@ -1669,7 +1684,7 @@
         label:c.name,
         x:cx+Math.cos(angle)*dist,
         y:cy+Math.sin(angle)*dist,
-        r:13,
+        r:nodeR,
         color:getNodeColor(c.company),
         type:'connection',
         data:c
@@ -1683,6 +1698,17 @@
     buildGraphLegend(currentLegendCompanies);
     syncFilterUIToData();
     setupCanvas(canvas);
+
+    // If a highlight was requested, pan to center that node
+    if (highlightedConn) {
+      const target = nodes.find(n => n.type === 'connection' && n.data && n.data.name === highlightedConn.name);
+      if (target) {
+        graphScale = 1.6;
+        graphOffsetX = W/2 - target.x * graphScale;
+        graphOffsetY = H/2 - target.y * graphScale;
+      }
+    }
+
     drawGraph();
   }
 
@@ -1793,7 +1819,7 @@
         const my=(e.clientY-rect.top-graphOffsetY)/graphScale;
         const clicked=nodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+5);
         if(clicked&&clicked.type==='connection') showPanel(clicked.data, clicked);
-        else closePanel();
+        else { closePanel(); highlightedConn = null; }
       }
       isDragging=false;
     };
@@ -1910,6 +1936,29 @@
         ctx.lineWidth = 2.5;
         ctx.stroke();
         drawHighlightLabelPill(ctx, picked.label, picked.x, picked.y + picked.r + 10);
+      }
+    }
+
+    // "View in Network Map" highlight — pulsing amber ring
+    if (highlightedConn) {
+      const hn = nodes.find(n => n.type === 'connection' && n.data && n.data.name === highlightedConn.name);
+      if (hn) {
+        const pulse = 0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 500));
+        ctx.globalAlpha = 1;
+        // Outer glow
+        ctx.beginPath();
+        ctx.arc(hn.x, hn.y, hn.r + 12 * pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 3 * pulse;
+        ctx.stroke();
+        // Inner ring
+        ctx.beginPath();
+        ctx.arc(hn.x, hn.y, hn.r + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        drawHighlightLabelPill(ctx, hn.label, hn.x, hn.y + hn.r + 10);
+        requestAnimationFrame(() => drawGraph());
       }
     }
 
@@ -2640,6 +2689,12 @@
     clearTimeout(noteSaveTimer);
     currentProfileConn = null;
     switchTab(profileOrigin || 'search');
+  }
+
+  function viewInNetworkMap() {
+    if (!currentProfileConn) return;
+    highlightedConn = currentProfileConn;
+    switchTab('graph');
   }
 
   function formatDate(d) {
