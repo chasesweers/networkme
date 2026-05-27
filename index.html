@@ -294,9 +294,6 @@
       color: var(--text-secondary);
       border: 0.5px solid var(--border);
     }
-    .match-score { flex-shrink: 0; text-align: center; }
-    .match-pct { font-size: 16px; font-weight: 600; color: var(--blue); display: block; }
-    .match-lbl { font-size: 10px; color: var(--text-tertiary); }
     .conn-actions { flex-shrink: 0; }
 
     .empty-state {
@@ -519,6 +516,35 @@
       display: inline-flex; align-items: center; gap: 4px;
     }
     .btn-ghost:hover { background: var(--bg-secondary); color: var(--text); }
+
+    /* AUTH PAGE (full-screen gate) */
+    #auth-modal { background: var(--bg-tertiary); align-items: stretch; justify-content: stretch; }
+    .auth-brand {
+      width: 380px; flex-shrink: 0;
+      background: linear-gradient(160deg, #0c1f3f 0%, #0a3266 100%);
+      padding: 52px 44px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .auth-brand-logo { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: -0.4px; color: #fff; margin-bottom: 6px; }
+    .auth-brand-logo span { color: #5ba8f5; }
+    .auth-brand-tagline { font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 300; }
+    .auth-brand-features { display: flex; flex-direction: column; gap: 20px; }
+    .auth-brand-feature { display: flex; align-items: flex-start; gap: 13px; font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.5; }
+    .auth-brand-feature i { font-size: 18px; color: #5ba8f5; margin-top: 1px; flex-shrink: 0; }
+    .auth-brand-footer { font-size: 12px; color: rgba(255,255,255,0.3); }
+    .auth-form-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 40px; background: var(--bg); }
+    .auth-form-inner { width: 100%; max-width: 360px; }
+    .auth-form-title { font-family: 'DM Serif Display', serif; font-size: 26px; font-weight: 400; margin-bottom: 6px; letter-spacing: -0.3px; }
+    .auth-form-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6; }
+    .auth-tabs { display: flex; margin-bottom: 20px; border: 0.5px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+    .auth-tab { flex: 1; padding: 9px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; background: var(--bg-secondary); color: var(--text-secondary); border: none; font-weight: 400; transition: all 0.15s; }
+    .auth-tab.active { background: var(--bg); color: var(--text); font-weight: 500; }
+    .auth-form-input { width: 100%; padding: 11px 14px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); font-size: 14px; font-family: 'DM Sans', sans-serif; background: var(--bg-secondary); color: var(--text); display: block; transition: border-color 0.15s, background 0.15s; }
+    .auth-form-input:focus { outline: none; border-color: var(--blue); background: var(--bg); }
+    .auth-error { color: #B91C1C; font-size: 13px; margin-bottom: 14px; padding: 9px 13px; background: #FEF2F2; border-radius: var(--radius-md); border: 0.5px solid #FECACA; display: none; }
+    .auth-divider { margin: 20px 0; border: none; border-top: 0.5px solid var(--border); }
+    .nav-user-sep { color: var(--border-secondary); margin: 0 2px; }
+    @media (max-width: 620px) { .auth-brand { display: none; } .auth-form-panel { padding: 40px 24px; } }
 
     /* SAVED DATA BANNER */
     .saved-banner {
@@ -828,9 +854,14 @@
     <span class="nav-tagline">LinkedIn network explorer</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
+    <button class="btn btn-secondary btn-sm" id="nav-signin-btn" onclick="showAuthModal()" style="display:none;">
+      <i class="ti ti-login"></i> Sign in
+    </button>
     <div class="nav-user" id="nav-user">
       <div class="nav-user-avatar" id="nav-user-avatar"></div>
       <span class="nav-user-name" id="nav-user-name"></span>
+      <span class="nav-user-sep">·</span>
+      <button class="btn-ghost" onclick="signOut()" style="font-size:12px;padding:3px 7px;">Sign out</button>
     </div>
     <div class="nav-tabs">
       <button class="nav-tab active" id="tab-import" onclick="switchTab('import')">
@@ -862,6 +893,9 @@
           </button>
         </div>
         <div class="settings-divider"></div>
+        <button class="settings-action" id="settings-signout" style="display:none" onclick="signOut(); closeSettings();">
+          <i class="ti ti-logout"></i> Sign out
+        </button>
         <button class="settings-action danger" onclick="clearData(); closeSettings();">
           <i class="ti ti-trash"></i> Clear saved data
         </button>
@@ -1197,7 +1231,215 @@
   </div>
 </div>
 
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal">
+  <!-- Brand panel -->
+  <div class="auth-brand">
+    <div>
+      <div class="auth-brand-logo">Network<span>.</span>me</div>
+      <div class="auth-brand-tagline">LinkedIn network explorer</div>
+    </div>
+    <div class="auth-brand-features">
+      <div class="auth-brand-feature"><i class="ti ti-search"></i><span>Search and filter your entire LinkedIn network</span></div>
+      <div class="auth-brand-feature"><i class="ti ti-share"></i><span>Visualize connections as an interactive graph</span></div>
+      <div class="auth-brand-feature"><i class="ti ti-notes"></i><span>Add private notes and track relationships</span></div>
+      <div class="auth-brand-feature"><i class="ti ti-cloud"></i><span>Sync your data across devices with a free account</span></div>
+    </div>
+    <div class="auth-brand-footer">Your data stays private and is never shared.</div>
+  </div>
+  <!-- Form panel -->
+  <div class="auth-form-panel">
+    <div class="auth-form-inner">
+      <h2 class="auth-form-title" id="auth-form-heading">Welcome back</h2>
+      <p class="auth-form-sub" id="auth-form-sub">Sign in to access your synced network data.</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="auth-tab-login" onclick="showAuthTab('login')">Sign in</button>
+        <button class="auth-tab" id="auth-tab-signup" onclick="showAuthTab('signup')">Create account</button>
+      </div>
+      <div class="auth-error" id="auth-error"></div>
+      <form onsubmit="submitAuth(); return false;" style="display:flex;flex-direction:column;gap:12px;">
+        <input type="email" id="auth-email" class="auth-form-input" placeholder="Email address" autocomplete="email">
+        <input type="password" id="auth-password" class="auth-form-input" placeholder="Password" autocomplete="current-password">
+        <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;justify-content:center;padding:11px 22px;">Sign in</button>
+      </form>
+      <hr class="auth-divider">
+      <div style="text-align:center;">
+        <button class="btn-ghost" onclick="skipAuth()" style="font-size:13px;color:var(--text-secondary);">
+          Continue without account <i class="ti ti-arrow-right" style="font-size:12px"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+  /* ── API / AUTH ───────────────────────────────────────────── */
+  const API_BASE = 'http://localhost:3000';
+  const TOKEN_KEY = 'networkme:token';
+
+  function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
+  function setToken(t) { try { localStorage.setItem(TOKEN_KEY, t); } catch {} }
+  function clearToken() { try { localStorage.removeItem(TOKEN_KEY); } catch {} }
+
+  async function api(path, opts = {}) {
+    const token = getToken();
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(API_BASE + path, { ...opts, headers });
+    if (res.status === 401) { clearToken(); showAuthModal(); throw new Error('unauthenticated'); }
+    return res;
+  }
+
+  let authUser = null;
+  let notesCache = new Map(); // personKey -> content (populated from /api/sync)
+  let currentAuthTab = 'login';
+
+  function showAuthModal() {
+    document.getElementById('auth-modal').classList.add('visible');
+    document.getElementById('auth-error').style.display = 'none';
+    document.getElementById('auth-email').value = '';
+    document.getElementById('auth-password').value = '';
+    showAuthTab(currentAuthTab);
+    setTimeout(() => document.getElementById('auth-email').focus(), 60);
+  }
+
+  function hideAuthModal() {
+    document.getElementById('auth-modal').classList.remove('visible');
+  }
+
+  function skipAuth() {
+    try { sessionStorage.setItem('networkme:auth_skipped', '1'); } catch {}
+    hideAuthModal();
+  }
+
+  function showAuthTab(tab) {
+    currentAuthTab = tab;
+    document.getElementById('auth-tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('auth-tab-signup').classList.toggle('active', tab === 'signup');
+    const btn = document.getElementById('auth-submit-btn');
+    btn.textContent = tab === 'login' ? 'Sign in' : 'Create account';
+    document.getElementById('auth-password').autocomplete = tab === 'login' ? 'current-password' : 'new-password';
+    const heading = document.getElementById('auth-form-heading');
+    const sub = document.getElementById('auth-form-sub');
+    if (heading) heading.textContent = tab === 'login' ? 'Welcome back' : 'Create your account';
+    if (sub) sub.textContent = tab === 'login'
+      ? 'Sign in to access your synced network data.'
+      : 'Start syncing your LinkedIn connections across devices.';
+  }
+
+  async function submitAuth() {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    errEl.style.display = 'none';
+    const btn = document.getElementById('auth-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Please wait…';
+    try {
+      const path = currentAuthTab === 'login' ? '/api/auth/login' : '/api/auth/signup';
+      const res = await fetch(API_BASE + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msgs = {
+          invalid_credentials: 'Invalid email or password.',
+          email_taken: 'That email is already registered. Try signing in.',
+          password_too_short: 'Password must be at least 8 characters.',
+          invalid_email: 'Please enter a valid email address.'
+        };
+        errEl.textContent = msgs[data.error] || 'Something went wrong. Please try again.';
+        errEl.style.display = 'block';
+        return;
+      }
+      setToken(data.token);
+      authUser = data.user;
+      hideAuthModal();
+      await loadFromBackend();
+    } catch(e) {
+      errEl.textContent = 'Could not connect to the backend. Is Docker running?';
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = currentAuthTab === 'login' ? 'Sign in' : 'Create account';
+    }
+  }
+
+  async function loadFromBackend() {
+    try {
+      const res = await api('/api/sync');
+      if (!res.ok) throw new Error('sync_failed');
+      const data = await res.json();
+      authUser = data.user;
+      _applyAuthUserToNav(data.user);
+      notesCache.clear();
+      (data.notes || []).forEach(n => notesCache.set(n.personKey, n.content));
+      relationships = data.relationships || [];
+      customTypes = data.types || [];
+      if (data.connections && data.connections.length > 0) {
+        connections = data.connections.map(c => ({
+          name: c.name, title: c.title || '', company: c.company || '',
+          connected: c.connected || '', url: c.url || 'https://linkedin.com', email: c.email || ''
+        }));
+        dismissSavedBanner();
+        onDataLoaded();
+        if (document.getElementById('view-import').classList.contains('active')) switchTab('search');
+      }
+    } catch(e) {
+      if (e.message === 'unauthenticated') return;
+      // Backend unreachable — fall back to IndexedDB
+      console.warn('Backend unavailable, using local data:', e);
+      await loadRelationships();
+      const saved = await dbGet('connections');
+      const savedName = await dbGet('userName');
+      if (saved && saved.length > 0) {
+        const banner = document.getElementById('saved-banner');
+        document.getElementById('saved-banner-title').textContent =
+          savedName ? `Welcome back, ${savedName.split(' ')[0]}!` : 'Welcome back!';
+        document.getElementById('saved-banner-sub').textContent =
+          `${saved.length} connection${saved.length !== 1 ? 's' : ''} saved locally (backend offline).`;
+        banner.classList.add('visible');
+      }
+    }
+  }
+
+  function _applyAuthUserToNav(user) {
+    if (!user) return;
+    const name = user.display_name || user.email;
+    const el = document.getElementById('nav-user');
+    document.getElementById('nav-user-name').textContent = name;
+    document.getElementById('nav-user-avatar').textContent =
+      name.split(/[\s@]/)[0].slice(0, 2).toUpperCase();
+    el.classList.add('visible');
+    document.getElementById('nav-signin-btn').style.display = 'none';
+    const soEl = document.getElementById('settings-signout');
+    if (soEl) soEl.style.display = '';
+  }
+
+  function signOut() {
+    clearToken();
+    try { sessionStorage.removeItem('networkme:auth_skipped'); } catch {}
+    authUser = null;
+    notesCache.clear();
+    connections = [];
+    relationships = [];
+    customTypes = [];
+    document.getElementById('nav-user').classList.remove('visible');
+    document.getElementById('nav-signin-btn').style.display = '';
+    const soEl = document.getElementById('settings-signout');
+    if (soEl) soEl.style.display = 'none';
+    document.getElementById('stats-bar').style.display = 'none';
+    document.getElementById('badge-count').style.display = 'none';
+    document.getElementById('results-list').innerHTML =
+      '<div class="empty-state"><i class="ti ti-users"></i><h3>No connections loaded</h3><p>Go to Import and upload your LinkedIn CSV or load the demo data.</p></div>';
+    document.getElementById('filter-row').innerHTML = '';
+    document.getElementById('insight-banner').classList.remove('visible');
+    switchTab('import');
+    showAuthModal();
+  }
+
   /* ── INDEXED DB ───────────────────────────────────────────── */
   const DB_NAME = 'networkme_db';
   const DB_VERSION = 2;
@@ -1253,16 +1495,24 @@
   async function initApp() {
     try {
       await openDB();
+      if (getToken()) {
+        await loadFromBackend();
+        return;
+      }
+      // No token — show login page unless already skipped this session
+      document.getElementById('nav-signin-btn').style.display = '';
+      const skipped = sessionStorage.getItem('networkme:auth_skipped');
+      if (!skipped) { showAuthModal(); }
+      // Load local data in background (restore banner will show behind/after auth page)
       await loadRelationships();
       const saved = await dbGet('connections');
       const savedName = await dbGet('userName');
       if (saved && saved.length > 0) {
-        // Show restore banner
         const banner = document.getElementById('saved-banner');
-        const title = document.getElementById('saved-banner-title');
-        const sub = document.getElementById('saved-banner-sub');
-        title.textContent = savedName ? `Welcome back, ${savedName.split(' ')[0]}!` : 'Welcome back!';
-        sub.textContent = `${saved.length} connection${saved.length !== 1 ? 's' : ''} saved from your last session.`;
+        document.getElementById('saved-banner-title').textContent =
+          savedName ? `Welcome back, ${savedName.split(' ')[0]}!` : 'Welcome back!';
+        document.getElementById('saved-banner-sub').textContent =
+          `${saved.length} connection${saved.length !== 1 ? 's' : ''} saved from your last session.`;
         banner.classList.add('visible');
       }
     } catch(e) {
@@ -1276,6 +1526,14 @@
       await dbSet('connections', data);
       if (userName) await dbSet('userName', userName);
     } catch(e) { console.warn('Save failed:', e); }
+    if (getToken()) {
+      try {
+        await api('/api/connections', {
+          method: 'PUT',
+          body: JSON.stringify({ connections: data })
+        });
+      } catch(e) { if (e.message !== 'unauthenticated') console.warn('Backend sync failed:', e); }
+    }
   }
 
   async function loadSavedData() {
@@ -1298,13 +1556,16 @@
 
   async function clearData() {
     if (!confirm('Clear your saved network data? You\'ll need to re-upload your CSV.')) return;
+    if (getToken()) {
+      try { await api('/api/connections', { method: 'DELETE' }); } catch(e) {}
+      notesCache.clear();
+    }
     try {
-      if (db) {
-        await dbDelete('connections');
-        await dbDelete('userName');
-      }
+      if (db) { await dbDelete('connections'); await dbDelete('userName'); }
     } catch(e) { console.warn('Clear failed:', e); }
     connections = [];
+    relationships = [];
+    customTypes = [];
     setUserName(null);
     document.getElementById('stats-bar').style.display = 'none';
     document.getElementById('badge-count').style.display = 'none';
@@ -1584,7 +1845,9 @@
 
     // Load which connections have notes (batch key check)
     let noteKeys = new Set();
-    if (db) {
+    if (getToken()) {
+      noteKeys = new Set([...notesCache.keys()].map(k => 'note:' + k));
+    } else if (db) {
       try {
         const keys = await new Promise((resolve, reject) => {
           const req = db.transaction(STORE_NAME,'readonly').objectStore(STORE_NAME).getAllKeys();
@@ -1597,7 +1860,6 @@
 
     list.forEach(c=>{
       const col=getAvatarColor(c.name);
-      const score=Math.min(99,55+Math.floor(seededRand(c.name)*43));
       const hasNote = noteKeys.has(noteKey(c));
       const div=document.createElement('div');
       div.className='conn-card';
@@ -1610,10 +1872,6 @@
             ${c.company?`<span class="conn-tag">${escHtml(c.company)}</span>`:''}
             ${c.connected?`<span class="conn-tag">Since ${getYear(c.connected)}</span>`:''}
           </div>
-        </div>
-        <div class="match-score" title="Relevance score">
-          <span class="match-pct">${score}%</span>
-          <span class="match-lbl">match</span>
         </div>
         <div class="conn-actions">
           <button class="btn btn-primary btn-sm" onclick='openProfile(${JSON.stringify(c)})'>
@@ -2197,6 +2455,7 @@
   let customTypes = [];        // [{id, label, color, builtin:false}]
 
   async function loadRelationships() {
+    if (getToken()) return; // loaded by loadFromBackend()
     try {
       relationships = (await dbGet('relationships:index')) || [];
       customTypes = (await dbGet('relationships:types')) || [];
@@ -2221,7 +2480,13 @@
     const [a, b] = canonPair(keyA, keyB);
     if (relationships.some(r => r.a === a && r.b === b && r.typeId === typeId)) return;
     relationships.push({ a, b, typeId, createdAt: Date.now() });
-    try { await dbSet('relationships:index', relationships); } catch(e) { console.warn('Save relationships failed:', e); }
+    if (getToken()) {
+      try {
+        await api('/api/relationships', { method: 'POST', body: JSON.stringify({ a, b, typeId }) });
+      } catch(e) { if (e.message !== 'unauthenticated') console.warn('Save relationship failed:', e); }
+    } else {
+      try { await dbSet('relationships:index', relationships); } catch(e) { console.warn('Save relationships failed:', e); }
+    }
   }
 
   async function removeRelationship(keyA, keyB, typeId) {
@@ -2229,7 +2494,13 @@
     const before = relationships.length;
     relationships = relationships.filter(r => !(r.a === a && r.b === b && r.typeId === typeId));
     if (relationships.length !== before) {
-      try { await dbSet('relationships:index', relationships); } catch(e) { console.warn('Save relationships failed:', e); }
+      if (getToken()) {
+        try {
+          await api('/api/relationships', { method: 'DELETE', body: JSON.stringify({ a, b, typeId }) });
+        } catch(e) { if (e.message !== 'unauthenticated') console.warn('Remove relationship failed:', e); }
+      } else {
+        try { await dbSet('relationships:index', relationships); } catch(e) { console.warn('Save relationships failed:', e); }
+      }
     }
   }
 
@@ -2245,7 +2516,16 @@
     const suffix = Math.random().toString(36).slice(2,6);
     const id = `custom_${slug}_${suffix}`;
     customTypes.push({ id, label: trimmed, color, builtin: false });
-    try { await dbSet('relationships:types', customTypes); } catch(e) { console.warn('Save custom type failed:', e); }
+    if (getToken()) {
+      try {
+        await api(`/api/relationships/types/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          body: JSON.stringify({ label: trimmed, color })
+        });
+      } catch(e) { if (e.message !== 'unauthenticated') console.warn('Save custom type failed:', e); }
+    } else {
+      try { await dbSet('relationships:types', customTypes); } catch(e) { console.warn('Save custom type failed:', e); }
+    }
     return id;
   }
 
@@ -2588,6 +2868,7 @@
   });
 
   async function loadNote(c) {
+    if (getToken()) return notesCache.get(personKey(c)) || '';
     try { return await dbGet(noteKey(c)) || ''; }
     catch { return ''; }
   }
@@ -2609,14 +2890,22 @@
       noteSaveTimer = setTimeout(async () => {
         try {
           const val = ta.value;
-          if (val.trim()) {
-            await dbSet(noteKey(c), val);
+          if (getToken()) {
+            const key = personKey(c);
+            const res = await api(`/api/notes/${encodeURIComponent(key)}`, {
+              method: 'PUT',
+              body: JSON.stringify({ content: val.trim() })
+            });
+            if (res.ok) {
+              if (val.trim()) notesCache.set(key, val);
+              else notesCache.delete(key);
+            }
           } else {
-            await dbDelete(noteKey(c));
+            if (val.trim()) { await dbSet(noteKey(c), val); }
+            else { await dbDelete(noteKey(c)); }
           }
           statusText.textContent = 'Saved';
           status.className = 'notes-save-status saved';
-          // Refresh the card note-dot in the background
           updateNoteDot(c, !!val.trim());
         } catch {
           statusText.textContent = 'Save failed';
@@ -2695,6 +2984,12 @@
     document.getElementById('notes-textarea').value = savedNote;
     document.getElementById('notes-status-text').textContent = savedNote ? 'Saved' : '';
     document.getElementById('notes-status').className = savedNote ? 'notes-save-status saved' : 'notes-save-status';
+    const hintEl = document.querySelector('.notes-hint');
+    if (hintEl) {
+      hintEl.innerHTML = getToken()
+        ? '<i class="ti ti-cloud" style="font-size:11px"></i> Notes synced to your account.'
+        : '<i class="ti ti-lock" style="font-size:11px"></i> Notes are saved locally on this device only.';
+    }
     setupNoteAutosave(c);
 
     // Relationships
