@@ -28,7 +28,7 @@
     }
 
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --bg: #1c1c1a;
         --bg-secondary: #252523;
         --bg-tertiary: #2c2c2a;
@@ -40,6 +40,18 @@
         --blue-light: #0c2a45;
         --blue-text: #5ba8f5;
       }
+    }
+    :root[data-theme="dark"] {
+      --bg: #1c1c1a;
+      --bg-secondary: #252523;
+      --bg-tertiary: #2c2c2a;
+      --text: #f0efeb;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(255,255,255,0.1);
+      --border-secondary: rgba(255,255,255,0.18);
+      --blue-light: #0c2a45;
+      --blue-text: #5ba8f5;
     }
 
     body {
@@ -298,7 +310,7 @@
     .no-results i { font-size: 28px; display: block; margin-bottom: 10px; color: var(--text-tertiary); }
 
     /* GRAPH VIEW */
-    .graph-wrap { background: var(--bg); border-radius: var(--radius-xl); border: 0.5px solid var(--border); overflow: hidden; }
+    .graph-wrap { position: relative; background: var(--bg); border-radius: var(--radius-xl); border: 0.5px solid var(--border); overflow: hidden; }
     .graph-header { padding: 16px 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .graph-header h2 { font-size: 15px; font-weight: 500; }
     .graph-header-actions { display: flex; gap: 8px; }
@@ -322,23 +334,41 @@
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
-    /* NODE PANEL */
+    /* NODE PANEL — floating mini-profile anchored to a clicked dot */
     .node-panel {
-      border-top: 0.5px solid var(--border);
-      padding: 20px;
+      position: absolute;
       display: none;
-      animation: slideUp 0.2s ease;
+      z-index: 50;
+      width: 280px;
+      max-width: calc(100% - 24px);
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+      padding: 16px;
+      animation: panelFade 0.15s ease;
     }
     @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes panelFade { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
     .node-panel.visible { display: block; }
-    .panel-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
-    .panel-name { font-size: 16px; font-weight: 500; }
-    .panel-title { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-    .panel-meta { display: flex; gap: 20px; margin-bottom: 12px; flex-wrap: wrap; }
-    .panel-meta-item { font-size: 13px; color: var(--text-secondary); }
+    .panel-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .panel-header .avatar { width: 38px; height: 38px; font-size: 12px; }
+    .panel-name { font-size: 14px; font-weight: 500; line-height: 1.25; }
+    .panel-title { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.3; }
+    .panel-meta { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .panel-meta-item { font-size: 12px; color: var(--text-secondary); }
     .panel-meta-item strong { color: var(--text); font-weight: 500; }
-    .panel-bio { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 14px; }
-    .panel-actions { display: flex; gap: 8px; }
+    .panel-bio { font-size: 12px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 12px; }
+    .panel-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .panel-actions .btn { flex: 1; min-width: 0; justify-content: center; }
+    .panel-close-x {
+      position: absolute; top: 8px; right: 8px;
+      background: transparent; border: none; cursor: pointer;
+      color: var(--text-tertiary); width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; transition: background 0.15s;
+    }
+    .panel-close-x:hover { background: var(--bg-secondary); color: var(--text); }
 
     /* HOW TO MODAL */
     .modal-overlay {
@@ -552,6 +582,140 @@
       flex-shrink: 0;
     }
 
+    /* RELATIONSHIPS */
+    .rel-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-xl); padding: 24px 28px; margin-bottom: 16px; }
+    .rel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .rel-header-left { display: flex; align-items: center; gap: 8px; }
+    .rel-header-left h3 { font-size: 14px; font-weight: 500; }
+    .rel-list { display: flex; flex-direction: column; gap: 8px; }
+    .rel-empty { font-size: 12px; color: var(--text-tertiary); padding: 6px 0; }
+    .rel-pill {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: 999px;
+      font-size: 13px;
+    }
+    .rel-pill-swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .rel-pill-type { color: var(--text-secondary); font-size: 12px; }
+    .rel-pill-name { color: var(--text); font-weight: 500; cursor: pointer; }
+    .rel-pill-name:hover { text-decoration: underline; }
+    .rel-pill-x {
+      margin-left: auto; background: transparent; border: none;
+      color: var(--text-tertiary); cursor: pointer;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .rel-pill-x:hover { background: var(--border); color: var(--text); }
+    .rel-add-row { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 0.5px solid var(--border); }
+    .rel-add-row.hidden { display: none; }
+    .rel-add-fields { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+    .rel-add-fields select, .rel-add-fields input[type="text"] {
+      flex: 1; min-width: 140px;
+      padding: 8px 12px;
+      border: 0.5px solid var(--border-secondary);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+    }
+    .rel-add-fields select:focus, .rel-add-fields input[type="text"]:focus { outline: none; border-color: var(--blue); }
+    .rel-add-buttons { display: flex; gap: 6px; justify-content: flex-end; }
+    .rel-swatches { display: flex; gap: 6px; }
+    .rel-swatch {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid transparent; cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .rel-swatch:hover { transform: scale(1.1); }
+    .rel-swatch.selected { border-color: var(--text); }
+    .rel-person-suggest {
+      max-height: 180px; overflow-y: auto;
+      border: 0.5px solid var(--border-secondary);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      display: none;
+    }
+    .rel-person-suggest.visible { display: block; }
+    .rel-person-row {
+      padding: 8px 12px; cursor: pointer;
+      font-size: 13px; border-bottom: 0.5px solid var(--border);
+    }
+    .rel-person-row:last-child { border-bottom: none; }
+    .rel-person-row:hover { background: var(--bg-secondary); }
+    .rel-person-row-co { color: var(--text-tertiary); font-size: 11px; margin-top: 2px; }
+    .rel-auto-badge { font-size: 10px; color: var(--text-tertiary); margin-left: 6px; font-style: italic; }
+
+    /* SETTINGS */
+    .settings-wrap { position: relative; }
+    .settings-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: transparent;
+      border: 0.5px solid var(--border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      transition: all 0.15s;
+    }
+    .settings-btn:hover { background: var(--bg-secondary); color: var(--text); }
+    .settings-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 220px;
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+      padding: 10px;
+      z-index: 100;
+    }
+    .settings-menu.visible { display: block; }
+    .settings-section-label {
+      font-size: 11px; color: var(--text-tertiary);
+      text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 6px 8px 4px;
+    }
+    .settings-theme-row { display: flex; gap: 4px; padding: 4px 4px 8px; }
+    .settings-theme-btn {
+      flex: 1;
+      padding: 6px 8px;
+      border: 0.5px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      transition: all 0.15s;
+    }
+    .settings-theme-btn:hover { background: var(--bg-secondary); color: var(--text); }
+    .settings-theme-btn.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue-text); }
+    .settings-divider { border-top: 0.5px solid var(--border); margin: 6px 0; }
+    .settings-action {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      display: flex; align-items: center; gap: 8px;
+      transition: background 0.15s;
+    }
+    .settings-action:hover { background: var(--bg-secondary); }
+    .settings-action.danger { color: #DC2626; }
+
     @media (max-width: 600px) {
       .nav { padding: 0 16px; }
       .nav-tagline { display: none; }
@@ -578,10 +742,6 @@
     <div class="nav-user" id="nav-user">
       <div class="nav-user-avatar" id="nav-user-avatar"></div>
       <span class="nav-user-name" id="nav-user-name"></span>
-      <span class="nav-user-sep">·</span>
-      <button class="btn-ghost" onclick="clearData()" title="Clear saved data">
-        <i class="ti ti-trash"></i> Clear
-      </button>
     </div>
     <div class="nav-tabs">
       <button class="nav-tab active" id="tab-import" onclick="switchTab('import')">
@@ -594,6 +754,29 @@
       <button class="nav-tab" id="tab-graph" onclick="switchTab('graph')">
         <i class="ti ti-share"></i> Visualize
       </button>
+    </div>
+    <div class="settings-wrap">
+      <button class="settings-btn" onclick="toggleSettings(event)" aria-label="Settings" title="Settings">
+        <i class="ti ti-settings"></i>
+      </button>
+      <div class="settings-menu" id="settings-menu">
+        <div class="settings-section-label">Theme</div>
+        <div class="settings-theme-row">
+          <button class="settings-theme-btn" data-theme-opt="system" onclick="setTheme('system')">
+            <i class="ti ti-device-desktop"></i> Auto
+          </button>
+          <button class="settings-theme-btn" data-theme-opt="light" onclick="setTheme('light')">
+            <i class="ti ti-sun"></i> Light
+          </button>
+          <button class="settings-theme-btn" data-theme-opt="dark" onclick="setTheme('dark')">
+            <i class="ti ti-moon"></i> Dark
+          </button>
+        </div>
+        <div class="settings-divider"></div>
+        <button class="settings-action danger" onclick="clearData(); closeSettings();">
+          <i class="ti ti-trash"></i> Clear saved data
+        </button>
+      </div>
     </div>
   </div>
 </nav>
@@ -737,14 +920,17 @@
               role="img"></canvas>
 
       <div class="graph-footer" id="graph-footer" style="display:none">
-        <div id="graph-legend" style="display:flex;gap:14px;flex-wrap:wrap;"></div>
+        <div id="graph-legend" style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0"></div>
         <span class="graph-hint"><i class="ti ti-mouse"></i> Scroll to zoom · Drag to pan · Click node for details</span>
       </div>
 
       <div class="node-panel" id="node-panel">
+        <button class="panel-close-x" onclick="closePanel()" aria-label="Close">
+          <i class="ti ti-x"></i>
+        </button>
         <div class="panel-header">
           <div class="avatar" id="panel-avatar"></div>
-          <div>
+          <div style="min-width:0;flex:1">
             <div class="panel-name" id="panel-name"></div>
             <div class="panel-title" id="panel-title"></div>
           </div>
@@ -752,12 +938,12 @@
         <div class="panel-meta" id="panel-meta"></div>
         <div class="panel-bio" id="panel-bio"></div>
         <div class="panel-actions">
-          <a id="panel-li-btn" href="#" target="_blank" class="btn btn-primary btn-sm">
-            <i class="ti ti-brand-linkedin"></i> View on LinkedIn
-          </a>
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('node-panel').classList.remove('visible')">
-            <i class="ti ti-x"></i> Close
+          <button class="btn btn-primary btn-sm" onclick="openPanelProfile()">
+            <i class="ti ti-user"></i> View full profile
           </button>
+          <a id="panel-li-btn" href="#" target="_blank" class="btn btn-secondary btn-sm" aria-label="View on LinkedIn">
+            <i class="ti ti-brand-linkedin"></i>
+          </a>
         </div>
       </div>
     </div>
@@ -796,6 +982,39 @@
           <div>
             <div class="profile-section-title">About</div>
             <div class="profile-bio-text" id="prof-bio"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Relationships card -->
+      <div class="rel-card">
+        <div class="rel-header">
+          <div class="rel-header-left">
+            <i class="ti ti-affiliate" style="color:var(--blue);font-size:18px"></i>
+            <h3>Relationships</h3>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="showAddRelationship()">
+            <i class="ti ti-plus"></i> Add
+          </button>
+        </div>
+        <div class="rel-list" id="rel-list"></div>
+        <div class="rel-add-row hidden" id="rel-add-row">
+          <div class="rel-add-fields">
+            <select id="rel-type-select" onchange="onRelTypeChange()"></select>
+            <div style="flex:1;min-width:160px;position:relative">
+              <input type="text" id="rel-person-input" placeholder="Search a connection by name…" oninput="onRelPersonInput()" autocomplete="off">
+              <div class="rel-person-suggest" id="rel-person-suggest"></div>
+            </div>
+          </div>
+          <div id="rel-custom-fields" style="display:none">
+            <div class="rel-add-fields">
+              <input type="text" id="rel-custom-label" placeholder="New relationship type…">
+              <div class="rel-swatches" id="rel-custom-swatches"></div>
+            </div>
+          </div>
+          <div class="rel-add-buttons">
+            <button class="btn btn-secondary btn-sm" onclick="cancelAddRelationship()">Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="saveAddRelationship()">Save</button>
           </div>
         </div>
       </div>
@@ -899,6 +1118,7 @@
   async function initApp() {
     try {
       await openDB();
+      await loadRelationships();
       const saved = await dbGet('connections');
       const savedName = await dbGet('userName');
       if (saved && saved.length > 0) {
@@ -1299,7 +1519,7 @@
     emptyState.style.display='none';
     canvas.style.display='block';
     footer.style.display='flex';
-    document.getElementById('node-panel').classList.remove('visible');
+    closePanel();
 
     canvas.width=canvas.offsetWidth||860;
     canvas.height=520;
@@ -1311,20 +1531,20 @@
     const sample=connections.slice(0,60);
     const companies=[...new Set(sample.map(c=>c.company||'Other'))];
 
-    nodes.push({id:'you',label:'You',x:cx,y:cy,r:20,color:'#0A66C2',type:'self',data:null});
+    nodes.push({id:'you',label:'You',x:cx,y:cy,r:28,color:'#0A66C2',type:'self',data:null});
 
     sample.forEach((c,i)=>{
       const cIdx=companies.indexOf(c.company||'Other');
       const baseAngle=(cIdx/companies.length)*Math.PI*2;
       const spread=(seededRand(c.name+i)-0.5)*0.9;
-      const dist=130+seededRand(c.name)*120;
+      const dist=170+seededRand(c.name)*180;
       const angle=baseAngle+spread;
       nodes.push({
         id:'c'+i,
         label:c.name,
         x:cx+Math.cos(angle)*dist,
         y:cy+Math.sin(angle)*dist,
-        r:9,
+        r:13,
         color:getNodeColor(c.company),
         type:'connection',
         data:c
@@ -1332,20 +1552,95 @@
       edges.push({from:'you',to:'c'+i});
     });
 
-    buildGraphLegend(companies.slice(0,7));
+    relaxNodeCollisions(cx, cy);
+
+    currentLegendCompanies = companies.slice(0,7);
+    buildGraphLegend(currentLegendCompanies);
     setupCanvas(canvas);
+    drawGraph();
+  }
+
+  let currentLegendCompanies = [];
+
+  // Push overlapping nodes apart so labels stay readable. Self node stays pinned.
+  function relaxNodeCollisions(cx, cy) {
+    const PAD = 22;            // extra breathing room beyond r1+r2 (covers label pills)
+    const ITERATIONS = 80;
+    for (let iter = 0; iter < ITERATIONS; iter++) {
+      let moved = false;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const minDist = a.r + b.r + PAD;
+          let dist = Math.hypot(dx, dy);
+          if (dist >= minDist) continue;
+          if (dist === 0) { dist = 0.01; }
+          const overlap = (minDist - dist) / 2;
+          const ux = dx / dist, uy = dy / dist;
+          if (a.type === 'self') {
+            b.x += ux * overlap * 2;
+            b.y += uy * overlap * 2;
+          } else if (b.type === 'self') {
+            a.x -= ux * overlap * 2;
+            a.y -= uy * overlap * 2;
+          } else {
+            a.x -= ux * overlap;
+            a.y -= uy * overlap;
+            b.x += ux * overlap;
+            b.y += uy * overlap;
+          }
+          moved = true;
+        }
+      }
+      // Keep self pinned at the center
+      const you = nodes.find(n => n.type === 'self');
+      if (you) { you.x = cx; you.y = cy; }
+      if (!moved) break;
+    }
+  }
+
+  function refreshGraphAndLegend() {
+    if (!document.getElementById('view-graph').classList.contains('active')) return;
+    buildGraphLegend(currentLegendCompanies);
     drawGraph();
   }
 
   function buildGraphLegend(companies){
     const leg=document.getElementById('graph-legend');
     leg.innerHTML='';
+    // Row 1: companies
+    const row1 = document.createElement('div');
+    row1.style.cssText = 'display:flex;gap:14px;flex-wrap:wrap;width:100%';
     companies.forEach(co=>{
       const item=document.createElement('div');
       item.className='legend-item';
       item.innerHTML=`<span class="legend-dot" style="background:${getNodeColor(co)}"></span>${escHtml(co||'Other')}`;
-      leg.appendChild(item);
+      row1.appendChild(item);
     });
+    leg.appendChild(row1);
+
+    // Row 2: relationship types (only those with at least one edge)
+    const present = new Set();
+    computeAllEdges().forEach(e => present.add(e.type.id));
+    if (present.size > 0) {
+      const row2 = document.createElement('div');
+      row2.style.cssText = 'display:flex;gap:14px;flex-wrap:wrap;width:100%;margin-top:6px;padding-top:6px;border-top:0.5px dashed var(--border)';
+      allRelationshipTypes().filter(t => present.has(t.id)).forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.style.cssText = 'cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);opacity:' + (isTypeVisible(t.id) ? '1' : '0.4');
+        item.title = isTypeVisible(t.id) ? 'Click to hide' : 'Click to show';
+        item.innerHTML = `<span style="display:inline-block;width:18px;height:2px;background:${t.color};border-radius:1px"></span>${escHtml(t.label)}`;
+        item.onclick = () => {
+          relTypeVisible[t.id] = !isTypeVisible(t.id);
+          buildGraphLegend(companies);
+          drawGraph();
+        };
+        row2.appendChild(item);
+      });
+      leg.appendChild(row2);
+    }
   }
 
   function setupCanvas(canvas){
@@ -1371,7 +1666,8 @@
         const mx=(e.clientX-rect.left-graphOffsetX)/graphScale;
         const my=(e.clientY-rect.top-graphOffsetY)/graphScale;
         const clicked=nodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+5);
-        if(clicked&&clicked.type==='connection') openProfile(clicked.data);
+        if(clicked&&clicked.type==='connection') showPanel(clicked.data, clicked);
+        else closePanel();
       }
       isDragging=false;
     };
@@ -1383,68 +1679,433 @@
     if(!canvas||!nodes.length) return;
     const ctx=canvas.getContext('2d');
     const W=canvas.width,H=canvas.height;
-    const dark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const dark=isDarkMode();
     ctx.clearRect(0,0,W,H);
     ctx.save();
     ctx.translate(graphOffsetX,graphOffsetY);
     ctx.scale(graphScale,graphScale);
 
+    // Scaffold edges (you ↔ connection)
     edges.forEach(e=>{
       const f=nodes.find(n=>n.id===e.from), t=nodes.find(n=>n.id===e.to);
       if(!f||!t) return;
       ctx.beginPath(); ctx.moveTo(f.x,f.y); ctx.lineTo(t.x,t.y);
-      ctx.strokeStyle=dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-      ctx.lineWidth=0.8; ctx.stroke();
+      ctx.strokeStyle=dark?'rgba(255,255,255,0.55)':'rgba(140,140,140,0.55)';
+      ctx.lineWidth=0.9; ctx.stroke();
     });
 
+    // Relationship edges (between connections) — drawn between scaffold and nodes
+    drawRelationshipEdges(ctx, dark);
+
+    // Pass 1: dots (glow, halo, filled circle, stroke, self name)
     nodes.forEach(n=>{
       const hovered=hoveredNode&&hoveredNode.id===n.id;
+      if(n.type==='self'){
+        const glow=ctx.createRadialGradient(n.x,n.y,n.r*0.6,n.x,n.y,n.r+18);
+        glow.addColorStop(0, n.color+'55');
+        glow.addColorStop(1, n.color+'00');
+        ctx.beginPath(); ctx.arc(n.x,n.y,n.r+18,0,Math.PI*2);
+        ctx.fillStyle=glow; ctx.fill();
+      }
       if(hovered&&n.type!=='self'){
-        ctx.beginPath(); ctx.arc(n.x,n.y,n.r+6,0,Math.PI*2);
+        ctx.beginPath(); ctx.arc(n.x,n.y,n.r+8,0,Math.PI*2);
         ctx.fillStyle=n.color+'22'; ctx.fill();
       }
       ctx.beginPath(); ctx.arc(n.x,n.y,n.r+(hovered?2:0),0,Math.PI*2);
       ctx.fillStyle=n.color; ctx.fill();
-      if(n.type==='self'){
+      if(n.type!=='self'){
+        ctx.strokeStyle=dark?'rgba(20,20,20,0.55)':'rgba(255,255,255,0.85)';
+        ctx.lineWidth=1.5; ctx.stroke();
+      } else {
         ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.stroke();
-        ctx.font='bold 10px DM Sans,sans-serif';
         ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('YOU',n.x,n.y);
-      } else if(hovered||graphScale>1.5){
-        const fname=n.label.split(' ')[0];
-        ctx.font=`${Math.max(10,11/graphScale*graphScale)}px DM Sans,sans-serif`;
-        ctx.fillStyle=dark?'rgba(240,239,235,0.9)':'rgba(26,26,24,0.75)';
-        ctx.textAlign='center'; ctx.textBaseline='top';
-        ctx.fillText(fname,n.x,n.y+n.r+3);
+        const userName = (document.getElementById('nav-user-name')?.textContent || '').trim();
+        const firstName = userName ? userName.split(/\s+/)[0] : '';
+        const labelText = firstName || 'YOU';
+        const fontSize = labelText.length <= 5 ? 12 : labelText.length <= 8 ? 11 : 10;
+        ctx.font = `bold ${fontSize}px DM Sans,sans-serif`;
+        const truncated = labelText.length > 10 ? labelText.slice(0,9)+'…' : labelText;
+        ctx.fillText(truncated, n.x, n.y);
       }
     });
+
+    // Pass 2: connection labels — drawn after all dots so they're never clipped
+    nodes.forEach(n=>{
+      if (n.type === 'self') return;
+      const hovered = hoveredNode && hoveredNode.id === n.id;
+      if (hovered) return; // hovered label drawn last
+      if (graphScale > 1.4) drawLabelPill(ctx, graphLabel(n.label), n.x, n.y+n.r+8, dark);
+    });
+    // Hovered node's label drawn very last so it sits on top of every other label too
+    if (hoveredNode && hoveredNode.type !== 'self') {
+      drawLabelPill(ctx, graphLabel(hoveredNode.label), hoveredNode.x, hoveredNode.y+hoveredNode.r+8, dark);
+    }
+
     ctx.restore();
+    positionPanel();
+  }
+
+  const NAME_PREFIXES = /^(dr|mr|mrs|ms|mx|prof|professor|rev|sir|dame|lord|lady|hon|capt|col|gen|lt|sgt|rep|sen|gov|amb|fr|sr|br|rabbi|imam|sheikh)\.?$/i;
+  function graphLabel(fullName) {
+    const tokens = (fullName || '').split(/\s+/).filter(Boolean);
+    if (tokens.length >= 2 && NAME_PREFIXES.test(tokens[0])) return fullName;
+    return tokens[0] || '';
+  }
+
+  function drawLabelPill(ctx, text, cx, top, dark){
+    const truncated = text.length > 18 ? text.slice(0,17)+'…' : text;
+    ctx.font='500 12px DM Sans,sans-serif';
+    const metrics = ctx.measureText(truncated);
+    const padX=8, padY=4, h=18;
+    const w=metrics.width+padX*2;
+    const x=cx-w/2, y=top;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x,y,w,h,9);
+    else ctx.rect(x,y,w,h);
+    ctx.fillStyle=dark?'rgba(30,30,32,0.85)':'rgba(255,255,255,0.92)';
+    ctx.fill();
+    ctx.strokeStyle=dark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)';
+    ctx.lineWidth=0.5; ctx.stroke();
+    ctx.fillStyle=dark?'rgba(240,239,235,0.95)':'rgba(26,26,24,0.85)';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(truncated, cx, y+h/2+0.5);
+  }
+
+  // Per-type visibility toggle: typeId -> boolean (default true)
+  const relTypeVisible = {};
+
+  function isTypeVisible(typeId) {
+    return relTypeVisible[typeId] !== false;
+  }
+
+  function computeAllEdges() {
+    // Map personKey -> node (only connection nodes)
+    const keyToNode = new Map();
+    nodes.forEach(n => { if (n.type === 'connection' && n.data) keyToNode.set(personKey(n.data), n); });
+
+    const out = []; // {fromNode, toNode, type, isAuto}
+
+    // Persisted relationships
+    relationships.forEach(r => {
+      const fn = keyToNode.get(r.a), tn = keyToNode.get(r.b);
+      if (!fn || !tn) return;
+      out.push({ fromNode: fn, toNode: tn, type: findType(r.typeId), isAuto: false });
+    });
+
+    // Auto coworker edges — every pair sharing a non-empty company
+    const byCompany = new Map();
+    nodes.forEach(n => {
+      if (n.type !== 'connection' || !n.data) return;
+      const co = (n.data.company || '').trim();
+      if (!co) return;
+      if (!byCompany.has(co)) byCompany.set(co, []);
+      byCompany.get(co).push(n);
+    });
+    const coworkerType = findType('coworker');
+    const manualPairs = new Set(relationships
+      .filter(r => r.typeId === 'coworker')
+      .map(r => `${r.a}__${r.b}`));
+    byCompany.forEach(group => {
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i+1; j < group.length; j++) {
+          const ka = personKey(group[i].data), kb = personKey(group[j].data);
+          const [a, b] = ka < kb ? [ka, kb] : [kb, ka];
+          if (manualPairs.has(`${a}__${b}`)) continue;
+          out.push({ fromNode: group[i], toNode: group[j], type: coworkerType, isAuto: true });
+        }
+      }
+    });
+
+    return out;
+  }
+
+  function drawRelationshipEdges(ctx, dark){
+    if (!nodes.length) return;
+    const all = computeAllEdges();
+    all.forEach(({ fromNode: f, toNode: t, type, isAuto }) => {
+      if (!isTypeVisible(type.id)) return;
+      const midX = (f.x + t.x) / 2;
+      const midY = (f.y + t.y) / 2;
+      const dx = t.x - f.x, dy = t.y - f.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const perpX = -dy / len, perpY = dx / len;
+      const offset = 12;
+      const ctrlX = midX + perpX * offset;
+      const ctrlY = midY + perpY * offset;
+      ctx.beginPath();
+      ctx.moveTo(f.x, f.y);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, t.x, t.y);
+      ctx.strokeStyle = type.color + (isAuto ? '55' : 'AA');
+      ctx.lineWidth = isAuto ? 1.1 : 1.6;
+      ctx.stroke();
+    });
   }
 
   function zoomGraph(f){ graphScale=Math.max(0.35,Math.min(4,graphScale*f)); drawGraph(); }
   function resetGraph(){ graphScale=1; graphOffsetX=0; graphOffsetY=0; drawGraph(); }
 
-  function showPanel(c){
+  let anchoredNodeId = null;
+  let panelConn = null;
+
+  function showPanel(c, node){
+    panelConn = c;
+    anchoredNodeId = node ? node.id : null;
     const col=getAvatarColor(c.name);
     const av=document.getElementById('panel-avatar');
     av.style.background=col.bg; av.style.color=col.fg; av.textContent=initials(c.name);
     document.getElementById('panel-name').textContent=c.name;
     document.getElementById('panel-title').textContent=c.title||(c.company?`Works at ${c.company}`:'');
     document.getElementById('panel-meta').innerHTML=`
-      <span class="panel-meta-item"><strong>Company</strong> ${escHtml(c.company||'—')}</span>
-      ${c.connected?`<span class="panel-meta-item"><strong>Connected</strong> ${escHtml(c.connected)}</span>`:''}
+      ${c.company?`<span class="panel-meta-item"><strong>Company</strong> ${escHtml(c.company)}</span>`:''}
+      ${c.connected?`<span class="panel-meta-item"><strong>Connected</strong> ${escHtml(formatDate(c.connected))}</span>`:''}
       ${c.email?`<span class="panel-meta-item"><strong>Email</strong> ${escHtml(c.email)}</span>`:''}
     `;
     document.getElementById('panel-bio').textContent=
-      `${c.name} is a ${c.title||'professional'}${c.company?' at '+c.company:''}. They are part of your direct LinkedIn network and can be a valuable contact for introductions, referrals, or industry conversations.`;
+      `${c.name} is a ${c.title||'professional'}${c.company?' at '+c.company:''}.`;
     document.getElementById('panel-li-btn').href=c.url||'https://linkedin.com';
     document.getElementById('node-panel').classList.add('visible');
+    positionPanel();
+  }
+
+  function closePanel(){
+    anchoredNodeId = null;
+    panelConn = null;
+    document.getElementById('node-panel').classList.remove('visible');
+  }
+
+  function openPanelProfile(){
+    if (panelConn) openProfile(panelConn);
+  }
+
+  function positionPanel(){
+    if (anchoredNodeId == null) return;
+    const panel = document.getElementById('node-panel');
+    if (!panel || !panel.classList.contains('visible')) return;
+    const node = nodes.find(n => n.id === anchoredNodeId);
+    const wrap = document.querySelector('.graph-wrap');
+    const canvas = document.getElementById('graph-canvas');
+    if (!node || !wrap || !canvas) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    const screenX = node.x * graphScale + graphOffsetX + (canvasRect.left - wrapRect.left);
+    const screenY = node.y * graphScale + graphOffsetY + (canvasRect.top - wrapRect.top);
+    const nodeScreenR = node.r * graphScale;
+    if (screenX < -nodeScreenR || screenY < -nodeScreenR ||
+        screenX > wrapRect.width + nodeScreenR || screenY > wrapRect.height + nodeScreenR) {
+      closePanel();
+      return;
+    }
+    const panelW = panel.offsetWidth;
+    const panelH = panel.offsetHeight;
+    const gap = 12;
+    let left = screenX + nodeScreenR + gap;
+    if (left + panelW > wrapRect.width - 8) {
+      left = screenX - nodeScreenR - gap - panelW;
+    }
+    left = Math.max(8, Math.min(left, wrapRect.width - panelW - 8));
+    let top = screenY - panelH/2;
+    top = Math.max(8, Math.min(top, wrapRect.height - panelH - 8));
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
   }
 
   /* ── NOTES ────────────────────────────────────────────────── */
-  function noteKey(c) {
+  function personKey(c) {
     const safe = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,30);
-    return `note:${safe(c.name)}_${safe(c.company)}`;
+    return `${safe(c.name)}_${safe(c.company)}`;
+  }
+  function noteKey(c) { return `note:${personKey(c)}`; }
+
+  /* ── RELATIONSHIPS ────────────────────────────────────────── */
+  const RELATIONSHIP_TYPES_BUILTIN = [
+    { id: 'friend',   label: 'Friend of',                 color: '#4F8EF7', builtin: true },
+    { id: 'coworker', label: 'Works at same corporation', color: '#E0A23C', builtin: true },
+    { id: 'school',   label: 'Goes to school with',       color: '#5DBE7A', builtin: true },
+    { id: 'family',   label: 'Family',                    color: '#C77BD1', builtin: true },
+    { id: 'mentor',   label: 'Mentor / mentee',           color: '#E07A6B', builtin: true },
+  ];
+  const CUSTOM_TYPE_SWATCHES = ['#7C9BD0', '#D49A47', '#6FA876', '#B783C2', '#D08770'];
+
+  let relationships = [];      // [{a, b, typeId, createdAt}], a < b lexicographically
+  let customTypes = [];        // [{id, label, color, builtin:false}]
+
+  async function loadRelationships() {
+    try {
+      relationships = (await dbGet('relationships:index')) || [];
+      customTypes = (await dbGet('relationships:types')) || [];
+    } catch { relationships = []; customTypes = []; }
+  }
+
+  function allRelationshipTypes() {
+    return [...RELATIONSHIP_TYPES_BUILTIN, ...customTypes];
+  }
+
+  function findType(typeId) {
+    return allRelationshipTypes().find(t => t.id === typeId)
+      || { id: typeId, label: 'Other', color: '#999999', builtin: false };
+  }
+
+  function canonPair(keyA, keyB) {
+    return keyA < keyB ? [keyA, keyB] : [keyB, keyA];
+  }
+
+  async function addRelationship(keyA, keyB, typeId) {
+    if (!keyA || !keyB || keyA === keyB) return;
+    const [a, b] = canonPair(keyA, keyB);
+    if (relationships.some(r => r.a === a && r.b === b && r.typeId === typeId)) return;
+    relationships.push({ a, b, typeId, createdAt: Date.now() });
+    try { await dbSet('relationships:index', relationships); } catch(e) { console.warn('Save relationships failed:', e); }
+  }
+
+  async function removeRelationship(keyA, keyB, typeId) {
+    const [a, b] = canonPair(keyA, keyB);
+    const before = relationships.length;
+    relationships = relationships.filter(r => !(r.a === a && r.b === b && r.typeId === typeId));
+    if (relationships.length !== before) {
+      try { await dbSet('relationships:index', relationships); } catch(e) { console.warn('Save relationships failed:', e); }
+    }
+  }
+
+  function getRelationshipsFor(key) {
+    return relationships.filter(r => r.a === key || r.b === key)
+      .map(r => ({ ...r, otherKey: r.a === key ? r.b : r.a }));
+  }
+
+  async function addCustomType(label, color) {
+    const trimmed = (label || '').trim();
+    if (!trimmed) return null;
+    const slug = trimmed.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+    const suffix = Math.random().toString(36).slice(2,6);
+    const id = `custom_${slug}_${suffix}`;
+    customTypes.push({ id, label: trimmed, color, builtin: false });
+    try { await dbSet('relationships:types', customTypes); } catch(e) { console.warn('Save custom type failed:', e); }
+    return id;
+  }
+
+  /* ── RELATIONSHIPS UI on profile page ─────────────────────── */
+  let relAddSelectedPerson = null;
+  let relAddSelectedSwatch = CUSTOM_TYPE_SWATCHES[0];
+
+  function findConnectionByKey(key) {
+    return connections.find(c => personKey(c) === key);
+  }
+
+  function renderRelationshipsList(c) {
+    const list = document.getElementById('rel-list');
+    if (!list) return;
+    const key = personKey(c);
+    const items = getRelationshipsFor(key);
+    if (items.length === 0) {
+      list.innerHTML = '<div class="rel-empty">No relationships yet. Click <strong>Add</strong> to mark how this person connects to others in your network.</div>';
+      return;
+    }
+    list.innerHTML = items.map(r => {
+      const t = findType(r.typeId);
+      const other = findConnectionByKey(r.otherKey);
+      const otherName = other ? other.name : '(unknown — re-import may have changed their data)';
+      const otherCo = other && other.company ? ` · ${escHtml(other.company)}` : '';
+      return `
+        <div class="rel-pill">
+          <span class="rel-pill-swatch" style="background:${t.color}"></span>
+          <span class="rel-pill-type">${escHtml(t.label)}</span>
+          <span class="rel-pill-name" ${other ? `onclick='openProfileByKey(${JSON.stringify(r.otherKey)})'` : ''}>${escHtml(otherName)}${otherCo}</span>
+          <button class="rel-pill-x" onclick='removeRel(${JSON.stringify(r.a)}, ${JSON.stringify(r.b)}, ${JSON.stringify(r.typeId)})' aria-label="Remove"><i class="ti ti-x"></i></button>
+        </div>`;
+    }).join('');
+  }
+
+  function openProfileByKey(key) {
+    const c = findConnectionByKey(key);
+    if (c) openProfile(c);
+  }
+
+  async function removeRel(a, b, typeId) {
+    await removeRelationship(a, b, typeId);
+    if (currentProfileConn) renderRelationshipsList(currentProfileConn);
+    refreshGraphAndLegend();
+  }
+
+  function showAddRelationship() {
+    relAddSelectedPerson = null;
+    relAddSelectedSwatch = CUSTOM_TYPE_SWATCHES[0];
+    const sel = document.getElementById('rel-type-select');
+    sel.innerHTML = allRelationshipTypes()
+      .map(t => `<option value="${t.id}">${escHtml(t.label)}</option>`)
+      .join('') + `<option value="__new__">+ New type…</option>`;
+    document.getElementById('rel-person-input').value = '';
+    document.getElementById('rel-person-suggest').classList.remove('visible');
+    document.getElementById('rel-custom-fields').style.display = 'none';
+    document.getElementById('rel-custom-label').value = '';
+    renderSwatches();
+    document.getElementById('rel-add-row').classList.remove('hidden');
+  }
+
+  function cancelAddRelationship() {
+    document.getElementById('rel-add-row').classList.add('hidden');
+  }
+
+  function onRelTypeChange() {
+    const sel = document.getElementById('rel-type-select');
+    document.getElementById('rel-custom-fields').style.display = sel.value === '__new__' ? 'block' : 'none';
+  }
+
+  function renderSwatches() {
+    const cont = document.getElementById('rel-custom-swatches');
+    cont.innerHTML = CUSTOM_TYPE_SWATCHES.map(c =>
+      `<div class="rel-swatch ${c === relAddSelectedSwatch ? 'selected' : ''}"
+            style="background:${c}"
+            onclick="selectSwatch('${c}')"></div>`
+    ).join('');
+  }
+
+  function selectSwatch(color) {
+    relAddSelectedSwatch = color;
+    renderSwatches();
+  }
+
+  function onRelPersonInput() {
+    const q = document.getElementById('rel-person-input').value.trim().toLowerCase();
+    const sug = document.getElementById('rel-person-suggest');
+    if (!q) { sug.classList.remove('visible'); relAddSelectedPerson = null; return; }
+    const currentKey = currentProfileConn ? personKey(currentProfileConn) : null;
+    const matches = connections
+      .filter(c => personKey(c) !== currentKey)
+      .filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q))
+      .slice(0, 8);
+    if (matches.length === 0) { sug.innerHTML = '<div class="rel-person-row" style="cursor:default;color:var(--text-tertiary)">No matches</div>'; sug.classList.add('visible'); return; }
+    sug.innerHTML = matches.map((c,i) => `
+      <div class="rel-person-row" onclick='selectRelPerson(${i})' data-idx="${i}">
+        <div>${escHtml(c.name)}</div>
+        <div class="rel-person-row-co">${escHtml(c.title||'')}${c.company?` · ${escHtml(c.company)}`:''}</div>
+      </div>`).join('');
+    sug._matches = matches;
+    sug.classList.add('visible');
+  }
+
+  function selectRelPerson(idx) {
+    const sug = document.getElementById('rel-person-suggest');
+    const c = sug._matches && sug._matches[idx];
+    if (!c) return;
+    relAddSelectedPerson = c;
+    document.getElementById('rel-person-input').value = c.name;
+    sug.classList.remove('visible');
+  }
+
+  async function saveAddRelationship() {
+    if (!currentProfileConn) return;
+    if (!relAddSelectedPerson) { alert('Pick a connection to relate to.'); return; }
+    const sel = document.getElementById('rel-type-select');
+    let typeId = sel.value;
+    if (typeId === '__new__') {
+      const label = document.getElementById('rel-custom-label').value.trim();
+      if (!label) { alert('Enter a name for the new relationship type.'); return; }
+      typeId = await addCustomType(label, relAddSelectedSwatch);
+      if (!typeId) return;
+    }
+    await addRelationship(personKey(currentProfileConn), personKey(relAddSelectedPerson), typeId);
+    cancelAddRelationship();
+    renderRelationshipsList(currentProfileConn);
+    refreshGraphAndLegend();
   }
 
   async function loadNote(c) {
@@ -1557,6 +2218,10 @@
     document.getElementById('notes-status').className = savedNote ? 'notes-save-status saved' : 'notes-save-status';
     setupNoteAutosave(c);
 
+    // Relationships
+    cancelAddRelationship();
+    renderRelationshipsList(c);
+
     // Switch to profile view
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1632,6 +2297,47 @@ Write in third person. Be specific to their role and company. Describe what they
   }
 
   window.addEventListener('resize', ()=>{ if(document.getElementById('view-graph').classList.contains('active')) buildGraph(); });
+
+  /* ── SETTINGS / THEME ─────────────────────────────────────── */
+  const THEME_KEY = 'networkme:theme';
+
+  function getStoredTheme() {
+    try { return localStorage.getItem(THEME_KEY) || 'system'; } catch { return 'system'; }
+  }
+
+  function setTheme(mode) {
+    const html = document.documentElement;
+    if (mode === 'system') html.removeAttribute('data-theme');
+    else html.setAttribute('data-theme', mode);
+    try { localStorage.setItem(THEME_KEY, mode); } catch {}
+    document.querySelectorAll('.settings-theme-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.themeOpt === mode);
+    });
+    if (document.getElementById('view-graph').classList.contains('active')) drawGraph();
+  }
+
+  function isDarkMode() {
+    const explicit = document.documentElement.getAttribute('data-theme');
+    if (explicit === 'dark') return true;
+    if (explicit === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function toggleSettings(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('settings-menu');
+    menu.classList.toggle('visible');
+  }
+  function closeSettings() {
+    document.getElementById('settings-menu').classList.remove('visible');
+  }
+  document.addEventListener('click', e => {
+    const wrap = document.querySelector('.settings-wrap');
+    if (wrap && !wrap.contains(e.target)) closeSettings();
+  });
+
+  // Apply stored theme before init so first paint matches.
+  setTheme(getStoredTheme());
 
   /* ── START ────────────────────────────────────────────────── */
   initApp();
