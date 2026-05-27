@@ -419,6 +419,9 @@
     .graph-hint { font-size: 12px; color: var(--text-tertiary); margin-left: auto; }
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .graph-slider-wrap { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); }
+    .graph-slider-wrap input[type=range] { width: 140px; accent-color: var(--blue); cursor: pointer; }
+    .graph-slider-label { white-space: nowrap; min-width: 80px; }
 
     /* NODE PANEL — floating mini-profile anchored to a clicked dot */
     .node-panel {
@@ -1008,6 +1011,10 @@
 
         <div class="graph-footer" id="graph-footer" style="display:none">
           <div id="graph-legend" style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0"></div>
+          <div class="graph-slider-wrap" id="graph-slider-wrap">
+            <span class="graph-slider-label" id="graph-slider-label">0 of 0</span>
+            <input type="range" id="graph-node-slider" min="1" max="100" value="100" oninput="onNodeSliderInput(this.value)">
+          </div>
           <span class="graph-hint"><i class="ti ti-mouse"></i> Scroll to zoom · Drag to pan · Click node for details</span>
         </div>
       </div>
@@ -1506,6 +1513,7 @@
     document.getElementById('badge-count').textContent = connections.length;
     document.getElementById('badge-count').style.display='inline-flex';
 
+    initGraphSlider();
     buildFilters();
     doSearch();
   }
@@ -1644,6 +1652,7 @@
   let isDragging=false, lastMouseX=0, lastMouseY=0;
   let hoveredNode=null;
   let highlightedConn=null; // connection to highlight from "View in Network Map"
+  let graphNodeLimit = 0; // set to connections.length when data loads
 
   function buildGraph() {
     const canvas=document.getElementById('graph-canvas');
@@ -1660,19 +1669,19 @@
     footer.style.display='flex';
     closePanel();
 
+    const sample = connections.slice(0, graphNodeLimit || connections.length);
+    const nodeR = sample.length > 150 ? 8 : sample.length > 80 ? 10 : 13;
+
     canvas.width=canvas.offsetWidth||860;
     canvas.height=520;
     graphScale=1; graphOffsetX=0; graphOffsetY=0;
     nodes=[]; edges=[];
-
     const W=canvas.width, H=canvas.height;
     const cx=W/2, cy=H/2;
-    const sample=connections;
     const companies=[...new Set(sample.map(c=>c.company||'Other'))];
 
     nodes.push({id:'you',label:'You',x:cx,y:cy,r:28,color:'#0A66C2',type:'self',data:null});
 
-    const nodeR = sample.length > 150 ? 8 : sample.length > 80 ? 10 : 13;
     sample.forEach((c,i)=>{
       const cIdx=companies.indexOf(c.company||'Other');
       const baseAngle=(cIdx/companies.length)*Math.PI*2;
@@ -1680,14 +1689,9 @@
       const dist=170+seededRand(c.name)*180;
       const angle=baseAngle+spread;
       nodes.push({
-        id:'c'+i,
-        label:c.name,
-        x:cx+Math.cos(angle)*dist,
-        y:cy+Math.sin(angle)*dist,
-        r:nodeR,
-        color:getNodeColor(c.company),
-        type:'connection',
-        data:c
+        id:'c'+i, label:c.name,
+        x:cx+Math.cos(angle)*dist, y:cy+Math.sin(angle)*dist,
+        r:nodeR, color:getNodeColor(c.company), type:'connection', data:c
       });
       edges.push({from:'you',to:'c'+i});
     });
@@ -1699,7 +1703,6 @@
     syncFilterUIToData();
     setupCanvas(canvas);
 
-    // If a highlight was requested, pan to center that node
     if (highlightedConn) {
       const target = nodes.find(n => n.type === 'connection' && n.data && n.data.name === highlightedConn.name);
       if (target) {
@@ -1708,8 +1711,31 @@
         graphOffsetY = H/2 - target.y * graphScale;
       }
     }
-
     drawGraph();
+  }
+
+  function onNodeSliderInput(val) {
+    graphNodeLimit = parseInt(val, 10);
+    updateSliderLabel();
+    buildGraph();
+  }
+
+  function updateSliderLabel() {
+    const total = connections.length;
+    const showing = Math.min(graphNodeLimit || total, total);
+    const el = document.getElementById('graph-slider-label');
+    if (el) el.textContent = showing + ' of ' + total;
+  }
+
+  function initGraphSlider() {
+    const slider = document.getElementById('graph-node-slider');
+    if (!slider || !connections.length) return;
+    const total = connections.length;
+    graphNodeLimit = total;
+    slider.min = 1;
+    slider.max = total;
+    slider.value = total;
+    updateSliderLabel();
   }
 
   let currentLegendCompanies = [];
