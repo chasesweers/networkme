@@ -419,6 +419,17 @@
     .graph-slider-wrap { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); }
     .graph-slider-wrap input[type=range] { width: 140px; accent-color: var(--blue); cursor: pointer; }
     .graph-slider-label { white-space: nowrap; min-width: 80px; }
+    .graph-node-count-input {
+      width: 48px; padding: 3px 6px;
+      border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md);
+      background: var(--bg-secondary); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 12px; text-align: center;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .graph-node-count-input::-webkit-inner-spin-button,
+    .graph-node-count-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .graph-node-count-input:focus { outline: none; border-color: var(--blue); background: var(--bg); }
 
     /* NODE PANEL — floating mini-profile anchored to a clicked dot */
     .node-panel {
@@ -831,6 +842,22 @@
     .settings-action:hover { background: var(--bg-secondary); }
     .settings-action.danger { color: #DC2626; }
 
+    .fav-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 18px;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-md);
+      transition: color 0.15s, background 0.15s;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .fav-btn:hover { color: #F59E0B; background: var(--bg-secondary); }
+    .fav-btn.active { color: #F59E0B; }
+
     @media (max-width: 600px) {
       .nav { padding: 0 16px; }
       .nav-tagline { display: none; }
@@ -854,6 +881,9 @@
     <span class="nav-tagline">LinkedIn network explorer</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
+    <a href="https://chasesweers.github.io" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+      Go to CS Home Page
+    </a>
     <button class="btn btn-secondary btn-sm" id="nav-signin-btn" onclick="showAuthModal()" style="display:none;">
       <i class="ti ti-login"></i> Sign in
     </button>
@@ -1047,7 +1077,11 @@
           <div id="graph-legend" style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0"></div>
           <div class="graph-slider-wrap" id="graph-slider-wrap">
             <span class="graph-slider-label" id="graph-slider-label">0 of 0</span>
-            <input type="range" id="graph-node-slider" min="1" max="100" value="100" oninput="onNodeSliderInput(this.value)">
+            <div style="position:relative;display:flex;align-items:center;">
+              <input type="range" id="graph-node-slider" min="0" max="100" value="100" oninput="onNodeSliderInput(this.value)">
+              <div id="slider-fav-mark" title="Favorites threshold" style="display:none;position:absolute;width:2px;height:16px;background:#F59E0B;border-radius:1px;pointer-events:none;top:50%;transform:translate(-50%,-50%);"></div>
+            </div>
+            <input type="number" id="graph-node-count" class="graph-node-count-input" min="0" max="100" value="100" oninput="onNodeCountInput(this.value)" title="Enter exact count">
           </div>
           <span class="graph-hint"><i class="ti ti-mouse"></i> Scroll to zoom · Drag to pan · Click node for details</span>
         </div>
@@ -1062,6 +1096,19 @@
               <i class="ti ti-chevron-down"></i>
             </button>
           </div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-checkbox-row" style="padding:2px 4px;cursor:pointer;border-radius:4px">
+            <input type="checkbox" id="filter-favorites-only" onchange="setGraphFavoritesFilter(this.checked)">
+            <span><i class="ti ti-star-filled" style="color:#F59E0B;font-size:12px;margin-right:2px"></i> Favorites only</span>
+          </label>
+        </div>
+
+        <div class="filter-group">
+          <label>People</label>
+          <input type="text" id="filter-person-search" placeholder="Search to add or remove…" autocomplete="off" oninput="onPersonSearchInput()">
+          <div class="filter-checkbox-list" id="filter-person-list" style="min-height:0"></div>
         </div>
 
         <div class="filter-group">
@@ -1493,6 +1540,7 @@
 
   /* ── INIT: check for saved data on page load ──────────────── */
   async function initApp() {
+    loadFavorites();
     try {
       await openDB();
       if (getToken()) {
@@ -1610,6 +1658,38 @@
       if (fn) return fn + (ln ? ' '+ln : '');
     }
     return null;
+  }
+
+  /* ── FAVORITES ────────────────────────────────────────────── */
+  let favorites = new Set();
+
+  function loadFavorites() {
+    try {
+      const s = localStorage.getItem('networkme:favorites');
+      favorites = new Set(s ? JSON.parse(s) : []);
+    } catch { favorites = new Set(); }
+  }
+
+  function saveFavoritesToStorage() {
+    try { localStorage.setItem('networkme:favorites', JSON.stringify([...favorites])); } catch {}
+  }
+
+  function isFavorite(c) { return favorites.has(personKey(c)); }
+
+  function toggleFavorite(c) {
+    const key = personKey(c);
+    if (favorites.has(key)) favorites.delete(key);
+    else favorites.add(key);
+    saveFavoritesToStorage();
+  }
+
+  function toggleFav(c, btn) {
+    toggleFavorite(c);
+    const fav = isFavorite(c);
+    btn.classList.toggle('active', fav);
+    btn.title = fav ? 'Remove favorite' : 'Add to favorites';
+    btn.querySelector('i').className = 'ti ' + (fav ? 'ti-star-filled' : 'ti-star');
+    if (activeFavFilter) doSearch();
   }
 
   /* ── DATA ─────────────────────────────────────────────────── */
@@ -1781,34 +1861,70 @@
 
   /* ── FILTERS ──────────────────────────────────────────────── */
   let activeFilter = '';
+  let activeFavFilter = false;
 
   function buildFilters() {
-    const companies = [...new Set(connections.map(c=>c.company).filter(Boolean))].slice(0,8);
+    const base = activeFavFilter ? connections.filter(c => isFavorite(c)) : connections;
+    const companies = [...new Set(base.map(c=>c.company).filter(Boolean))].slice(0,8);
     const row = document.getElementById('filter-row');
     row.innerHTML='';
     const all = document.createElement('button');
-    all.className='filter-chip active'; all.textContent='All';
-    all.onclick=()=>setFilter('',all);
+    all.className='filter-chip' + (!activeFavFilter && !activeFilter ? ' active' : ''); all.textContent='All';
+    all.onclick=()=>setFilter('');
     row.appendChild(all);
+    const favChip = document.createElement('button');
+    favChip.className = 'filter-chip' + (activeFavFilter ? ' active' : '');
+    favChip.innerHTML = '<i class="ti ti-star-filled" style="font-size:11px;margin-right:3px"></i>Favorites';
+    favChip.onclick = () => toggleFavFilter();
+    row.appendChild(favChip);
+    if (activeFavFilter) {
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'btn btn-secondary btn-sm';
+      clearBtn.style.cssText = 'margin-left:4px;flex-shrink:0;';
+      clearBtn.innerHTML = '<i class="ti ti-star-off"></i> Clear favorites';
+      clearBtn.onclick = clearAllFavorites;
+      row.appendChild(clearBtn);
+    }
     companies.forEach(co=>{
       const btn=document.createElement('button');
-      btn.className='filter-chip'; btn.textContent=co;
-      btn.onclick=()=>setFilter(co,btn);
+      btn.className='filter-chip' + (activeFilter === co ? ' active' : ''); btn.textContent=co;
+      btn.onclick=()=>setFilter(co);
       row.appendChild(btn);
     });
   }
 
-  function setFilter(val, el) {
+  function setFilter(val) {
     activeFilter=val;
-    document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
-    el.classList.add('active');
+    buildFilters();
     doSearch();
+  }
+
+  function toggleFavFilter() {
+    activeFavFilter = !activeFavFilter;
+    activeFilter = '';
+    buildFilters();
+    doSearch();
+  }
+
+  function clearAllFavorites() {
+    favorites.clear();
+    saveFavoritesToStorage();
+    activeFavFilter = false;
+    buildFilters();
+    doSearch();
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+      btn.classList.remove('active');
+      btn.title = 'Add to favorites';
+      const icon = btn.querySelector('i');
+      if (icon) icon.className = 'ti ti-star';
+    });
   }
 
   /* ── SEARCH ───────────────────────────────────────────────── */
   function doSearch() {
     const q = (document.getElementById('search-input')||{value:''}).value.toLowerCase().trim();
     let results = [...connections];
+    if(activeFavFilter) results=results.filter(c=>isFavorite(c));
     if(activeFilter) results=results.filter(c=>(c.company||'').toLowerCase().includes(activeFilter.toLowerCase()));
     if(q) {
       results=results.filter(c=>
@@ -1873,7 +1989,10 @@
             ${c.connected?`<span class="conn-tag">Since ${getYear(c.connected)}</span>`:''}
           </div>
         </div>
-        <div class="conn-actions">
+        <div class="conn-actions" style="display:flex;align-items:center;gap:4px;">
+          <button class="fav-btn${isFavorite(c)?' active':''}" onclick='toggleFav(${JSON.stringify(c)},this)' title="${isFavorite(c)?'Remove favorite':'Add to favorites'}">
+            <i class="ti ${isFavorite(c)?'ti-star-filled':'ti-star'}"></i>
+          </button>
           <button class="btn btn-primary btn-sm" onclick='openProfile(${JSON.stringify(c)})'>
             <i class="ti ti-user"></i> Profile
           </button>
@@ -1885,6 +2004,14 @@
   function seededRand(s){let h=0;for(let c of s)h=(Math.imul(31,h)+c.charCodeAt(0))|0;return Math.abs(h)/2147483647;}
   function escHtml(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
   function getYear(d){try{const y=new Date(d).getFullYear();return isNaN(y)?d:y;}catch{return d;}}
+
+  function getSliderSortedConnections() {
+    const favs = connections.filter(c => isFavorite(c))
+      .sort((a, b) => seededRand(a.name + '_fv') - seededRand(b.name + '_fv'));
+    const nonFavs = connections.filter(c => !isFavorite(c))
+      .sort((a, b) => seededRand(a.name + '_nf') - seededRand(b.name + '_nf'));
+    return [...favs, ...nonFavs];
+  }
 
   /* ── GRAPH ────────────────────────────────────────────────── */
   const COMPANY_COLORS = {
@@ -1910,25 +2037,52 @@
   let isDragging=false, lastMouseX=0, lastMouseY=0;
   let hoveredNode=null;
   let highlightedConn=null; // connection to highlight from "View in Network Map"
-  let graphNodeLimit = 0; // set to connections.length when data loads
+  let graphNodeLimit = -1; // -1 = unset; 0+ = explicit user value
+  const graphPinned = new Set();   // personKeys forced into graph regardless of slider
+  const graphExcluded = new Set(); // personKeys forced out of graph regardless of slider
 
   function buildGraph() {
     const canvas=document.getElementById('graph-canvas');
     const emptyState=document.getElementById('graph-empty-state');
     const footer=document.getElementById('graph-footer');
     if(!connections.length) {
+      emptyState.innerHTML='<i class="ti ti-share"></i><h3>No connections loaded</h3><p>Go to Import and upload your LinkedIn CSV or load the demo data.</p>';
       emptyState.style.display='block';
       canvas.style.display='none';
       footer.style.display='none';
       return;
     }
+
+    let sample;
+    if (graphFilter.favoritesOnly) {
+      sample = connections.filter(c => isFavorite(c));
+      if (sample.length === 0) {
+        emptyState.innerHTML='<i class="ti ti-star"></i><h3>No favorites yet</h3><p>Star connections in Search to see them here.</p>';
+        emptyState.style.display='block';
+        canvas.style.display='none';
+        footer.style.display='none';
+        return;
+      }
+    } else {
+      emptyState.innerHTML='<i class="ti ti-share"></i><h3>No connections loaded</h3><p>Go to Import and upload your LinkedIn CSV or load the demo data.</p>';
+      const _sorted = getSliderSortedConnections();
+      let _base = _sorted.slice(0, graphNodeLimit < 0 ? _sorted.length : graphNodeLimit);
+      if (graphPinned.size > 0 || graphExcluded.size > 0) {
+        const baseKeys = new Set(_base.map(c => personKey(c)));
+        _base = _base.filter(c => !graphExcluded.has(personKey(c)));
+        connections.forEach(c => {
+          const k = personKey(c);
+          if (graphPinned.has(k) && !baseKeys.has(k) && !graphExcluded.has(k)) _base.push(c);
+        });
+      }
+      sample = _base;
+    }
+
+    const nodeR = sample.length > 150 ? 8 : sample.length > 80 ? 10 : 13;
     emptyState.style.display='none';
     canvas.style.display='block';
     footer.style.display='flex';
     closePanel();
-
-    const sample = connections.slice(0, graphNodeLimit || connections.length);
-    const nodeR = sample.length > 150 ? 8 : sample.length > 80 ? 10 : 13;
 
     canvas.width=canvas.offsetWidth||860;
     canvas.height=520;
@@ -1940,19 +2094,34 @@
 
     nodes.push({id:'you',label:'You',x:cx,y:cy,r:28,color:'#0A66C2',type:'self',data:null});
 
-    sample.forEach((c,i)=>{
-      const cIdx=companies.indexOf(c.company||'Other');
-      const baseAngle=(cIdx/companies.length)*Math.PI*2;
-      const spread=(seededRand(c.name+i)-0.5)*0.9;
-      const dist=170+seededRand(c.name)*180;
-      const angle=baseAngle+spread;
-      nodes.push({
-        id:'c'+i, label:c.name,
-        x:cx+Math.cos(angle)*dist, y:cy+Math.sin(angle)*dist,
-        r:nodeR, color:getNodeColor(c.company), type:'connection', data:c
+    if (graphFilter.favoritesOnly) {
+      const n = sample.length;
+      const radius = Math.min(Math.max(140, n * 22), Math.min(W * 0.38, H * 0.40));
+      sample.forEach((c, i) => {
+        const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+        nodes.push({
+          id:'c'+i, label:c.name,
+          x: cx + Math.cos(angle) * radius,
+          y: cy + Math.sin(angle) * radius,
+          r: nodeR, color: getNodeColor(c.company), type:'connection', data:c
+        });
+        edges.push({from:'you', to:'c'+i});
       });
-      edges.push({from:'you',to:'c'+i});
-    });
+    } else {
+      sample.forEach((c,i)=>{
+        const cIdx=companies.indexOf(c.company||'Other');
+        const baseAngle=(cIdx/companies.length)*Math.PI*2;
+        const spread=(seededRand(c.name+i)-0.5)*0.9;
+        const dist=170+seededRand(c.name)*180;
+        const angle=baseAngle+spread;
+        nodes.push({
+          id:'c'+i, label:c.name,
+          x:cx+Math.cos(angle)*dist, y:cy+Math.sin(angle)*dist,
+          r:nodeR, color:getNodeColor(c.company), type:'connection', data:c
+        });
+        edges.push({from:'you',to:'c'+i});
+      });
+    }
 
     relaxNodeCollisions(cx, cy);
 
@@ -1978,11 +2147,37 @@
     buildGraph();
   }
 
+  function onNodeCountInput(val) {
+    const total = connections.length;
+    let n = parseInt(val, 10);
+    if (isNaN(n) || n < 0) n = 0;
+    if (n > total) n = total;
+    graphNodeLimit = n;
+    const slider = document.getElementById('graph-node-slider');
+    if (slider) slider.value = n;
+    updateSliderLabel();
+    buildGraph();
+  }
+
   function updateSliderLabel() {
     const total = connections.length;
-    const showing = Math.min(graphNodeLimit || total, total);
+    const showing = graphNodeLimit < 0 ? total : Math.min(graphNodeLimit, total);
     const el = document.getElementById('graph-slider-label');
     if (el) el.textContent = showing + ' of ' + total;
+    const countInput = document.getElementById('graph-node-count');
+    if (countInput) countInput.value = showing;
+    updateSliderMark();
+  }
+
+  function updateSliderMark() {
+    const mark = document.getElementById('slider-fav-mark');
+    if (!mark) return;
+    const favCount = connections.filter(c => isFavorite(c)).length;
+    const total = connections.length;
+    if (favCount === 0 || favCount >= total || total <= 1) { mark.style.display = 'none'; return; }
+    mark.style.display = 'block';
+    const pct = favCount / total;
+    mark.style.left = `calc(8px + ${pct} * (100% - 16px))`;
   }
 
   function initGraphSlider() {
@@ -1990,9 +2185,11 @@
     if (!slider || !connections.length) return;
     const total = connections.length;
     graphNodeLimit = total;
-    slider.min = 1;
+    slider.min = 0;
     slider.max = total;
     slider.value = total;
+    const countInput = document.getElementById('graph-node-count');
+    if (countInput) { countInput.min = 0; countInput.max = total; }
     updateSliderLabel();
   }
 
@@ -2124,7 +2321,8 @@
     // Compute per-node match state once (used for dimming + match count)
     const filterActive = graphFilter.companies.size > 0
       || !!graphFilter.titleQuery
-      || !!graphFilter.relPersonKey;
+      || !!graphFilter.relPersonKey
+      || graphFilter.favoritesOnly;
     const nodeMatches = new Map();
     let matchCount = 0, totalConn = 0;
     nodes.forEach(n => {
@@ -2661,11 +2859,13 @@
     titleQuery: '',
     relPersonKey: null,
     relTypeId: '__any__',
+    favoritesOnly: false,
   };
   let filterPersonSuggestMatches = [];
 
   function connectionMatches(c) {
     if (!c) return true;
+    if (graphFilter.favoritesOnly && !isFavorite(c)) return false;
     if (graphFilter.companies.size > 0 && !graphFilter.companies.has(c.company || '')) return false;
     if (graphFilter.titleQuery) {
       const t = (c.title || '').toLowerCase();
@@ -2701,21 +2901,21 @@
   function updateMatchCount(matched, total) {
     const el = document.getElementById('filter-match-count');
     if (!el) return;
-    const active = graphFilter.companies.size > 0 || graphFilter.titleQuery || graphFilter.relPersonKey;
+    const active = graphFilter.companies.size > 0 || graphFilter.titleQuery || graphFilter.relPersonKey || graphFilter.favoritesOnly;
     el.textContent = active ? `${matched} of ${total} visible` : `${total} connections`;
   }
 
   function syncFilterUIToData() {
     renderCompanyChecklist();
     populateRelTypeDropdown();
-    // Drop stale company selections that aren't in the data anymore
-    const present = new Set(connections.map(c => c.company || '').filter(Boolean));
+    // Drop stale company selections that aren't visible on the graph anymore
+    const present = new Set(nodes.filter(n => n.type === 'connection' && n.data).map(n => n.data.company || '').filter(Boolean));
     [...graphFilter.companies].forEach(co => { if (!present.has(co)) graphFilter.companies.delete(co); });
   }
 
   function getCompanyList() {
     const set = new Set();
-    connections.forEach(c => { if (c.company) set.add(c.company); });
+    nodes.forEach(n => { if (n.type === 'connection' && n.data && n.data.company) set.add(n.data.company); });
     return [...set].sort((a, b) => a.localeCompare(b));
   }
 
@@ -2835,11 +3035,63 @@
     drawGraph();
   }
 
+  function setGraphFavoritesFilter(checked) {
+    graphFilter.favoritesOnly = checked;
+    buildGraph();
+  }
+
+  function isInGraph(c) {
+    return nodes.some(n => n.type === 'connection' && n.data && personKey(n.data) === personKey(c));
+  }
+
+  function onPersonSearchInput() {
+    const input = document.getElementById('filter-person-search');
+    const list = document.getElementById('filter-person-list');
+    if (!input || !list) return;
+    const q = input.value.trim().toLowerCase();
+    if (!q) { list.innerHTML = ''; return; }
+    const matches = connections
+      .filter(c => c.name.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q))
+      .slice(0, 10);
+    if (matches.length === 0) {
+      list.innerHTML = '<div class="filter-checkbox-empty">No matches.</div>';
+      return;
+    }
+    list.innerHTML = matches.map(c => {
+      const k = personKey(c);
+      const checked = isInGraph(c);
+      return `
+        <label class="filter-checkbox-row">
+          <input type="checkbox" ${checked ? 'checked' : ''} onchange="togglePersonInGraph('${escAttr(k)}',this.checked)">
+          <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ${escHtml(c.name)}${c.company ? `<span style="color:var(--text-tertiary);font-size:11px"> · ${escHtml(c.company)}</span>` : ''}
+          </span>
+        </label>`;
+    }).join('');
+  }
+
+  function togglePersonInGraph(key, checked) {
+    if (checked) {
+      graphPinned.add(key);
+      graphExcluded.delete(key);
+    } else {
+      graphExcluded.add(key);
+      graphPinned.delete(key);
+    }
+    buildGraph();
+    onPersonSearchInput();
+  }
+
   function clearFilters() {
     graphFilter.companies.clear();
     graphFilter.titleQuery = '';
     graphFilter.relPersonKey = null;
     graphFilter.relTypeId = '__any__';
+    graphFilter.favoritesOnly = false;
+    graphPinned.clear();
+    graphExcluded.clear();
+    const favCb = document.getElementById('filter-favorites-only');
+    if (favCb) favCb.checked = false;
     const titleInput = document.getElementById('filter-title');
     if (titleInput) titleInput.value = '';
     const personInput = document.getElementById('filter-rel-person');
@@ -2848,10 +3100,14 @@
     if (typeSel) typeSel.value = '__any__';
     const coSearch = document.getElementById('filter-company-search');
     if (coSearch) coSearch.value = '';
+    const pSearch = document.getElementById('filter-person-search');
+    if (pSearch) pSearch.value = '';
+    const pList = document.getElementById('filter-person-list');
+    if (pList) pList.innerHTML = '';
     document.getElementById('filter-rel-suggest')?.classList.remove('visible');
     document.getElementById('filter-title-suggest')?.classList.remove('visible');
     renderCompanyChecklist();
-    drawGraph();
+    buildGraph();
   }
 
   function toggleFilterCollapse() {
